@@ -13,3 +13,4 @@ redis==5.0.*
 python-jose[cryptography]==3.3.*  # JWT validation
 requests==2.31.*
 sentry-sdk==2.3.*
+apscheduler==3.10.*

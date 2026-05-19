@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     ZOOM_CLIENT_SECRET: str = ''
     ZOOM_WEBHOOK_SECRET_TOKEN: str = ''
 
+    SUPABASE_URL: str = ''
+    SUPABASE_SERVICE_KEY: str = ''
+
     ANTHROPIC_API_KEY: str = ''
     OPENAI_API_KEY: str = ''
 

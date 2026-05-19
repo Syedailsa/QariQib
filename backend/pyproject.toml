@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "alembic==1.13.*",
+    "apscheduler==3.10.*",
     "asyncpg==0.29.*",
     "celery==5.3.*",
     "fastapi==0.111.*",
@@ -19,5 +20,6 @@ dependencies = [
     "requests==2.31.*",
     "sentry-sdk==2.3.*",
     "sqlalchemy==2.0.*",
+    "supabase>=2.16.0",
     "uvicorn[standard]==0.29.*",
 ]
