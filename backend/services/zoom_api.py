@@ -1,22 +1,35 @@
 # services/zoom_api.py
 import httpx
 import base64
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from core.config import settings
 
 ZOOM_API_BASE = 'https://api.zoom.us/v2'
 
+_token_cache: dict = {'token': None, 'expires_at': datetime.min.replace(tzinfo=timezone.utc)}
+
 
 def get_access_token() -> str:
+    now = datetime.now(timezone.utc)
+    if _token_cache['token'] and now < _token_cache['expires_at']:
+        return _token_cache['token']
+
     credentials = f'{settings.ZOOM_CLIENT_ID}:{settings.ZOOM_CLIENT_SECRET}'
     encoded = base64.b64encode(credentials.encode()).decode()
 
     response = httpx.post(
         f'https://zoom.us/oauth/token?grant_type=account_credentials&account_id={settings.ZOOM_ACCOUNT_ID}',
-        headers={'Authorization': f'Basic {encoded}'}
+        headers={'Authorization': f'Basic {encoded}'},
+        timeout=15.0
     )
     response.raise_for_status()
-    return response.json()['access_token']
+    token = response.json()['access_token']
+
+    # Zoom tokens are valid for 1 hour — cache for 55 min to avoid edge cases
+    _token_cache['token'] = token
+    _token_cache['expires_at'] = now + timedelta(minutes=55)
+    print('[ZOOM] Access token refreshed')
+    return token
 
 
 def get_headers() -> dict:
@@ -50,7 +63,8 @@ def create_meeting(teacher_zoom_user_id: str, topic: str,
     response = httpx.post(
         f'{ZOOM_API_BASE}/users/{teacher_zoom_user_id}/meetings',
         headers=get_headers(),
-        json=payload
+        json=payload,
+        timeout=30.0
     )
     response.raise_for_status()
     return response.json()
@@ -67,25 +81,13 @@ def register_participant(meeting_id: str, first_name: str,
     response = httpx.post(
         f'{ZOOM_API_BASE}/meetings/{meeting_id}/registrants',
         headers=get_headers(),
-        json=payload
+        json=payload,
+        timeout=30.0
     )
-    
-    # Print full error for debugging
+
     if response.status_code != 201:
         print(f'[ZOOM ERROR] Status: {response.status_code}')
         print(f'[ZOOM ERROR] Body: {response.text}')
-    
+
     response.raise_for_status()
     return response.json()
-
-
-def get_registrants(meeting_id: str) -> list:
-    """
-    Returns list of all registrants for a meeting.
-    """
-    response = httpx.get(
-        f'{ZOOM_API_BASE}/meetings/{meeting_id}/registrants',
-        headers=get_headers()
-    )
-    response.raise_for_status()
-    return response.json().get('registrants', [])

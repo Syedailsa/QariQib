@@ -35,4 +35,6 @@ def create_student(body: StudentCreate):
         'parent_phone': body.parent_phone,
         'is_active':    True
     }).execute()
+    if not result.data:
+        raise HTTPException(status_code=500, detail='Failed to create student')
     return result.data[0]

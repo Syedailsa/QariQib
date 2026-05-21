@@ -1,7 +1,7 @@
 'use client'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getSchedule, resolveAlert } from '@/lib/api'
-import { format } from 'date-fns'
+import { formatTime, formatDateTime } from '@/lib/time'
 import { useParams } from 'next/navigation'
 
 const STATUS_COLORS: Record<string, string> = {
@@ -28,10 +28,14 @@ export default function ScheduleDetailPage() {
   const { id } = useParams()
   const qc = useQueryClient()
 
-  const { data: schedule, isLoading } = useQuery({
+  const { data: schedule, isLoading, isError } = useQuery({
     queryKey: ['schedule', id],
     queryFn: () => getSchedule(id as string),
-    refetchInterval: 15000  // refresh every 15s if live
+    // Only poll when the class is active — stop once completed or missed
+    refetchInterval: (query) => {
+      const status = query.state.data?.status
+      return status === 'live' || status === 'scheduled' ? 15000 : false
+    }
   })
 
   const resolveMutation = useMutation({
@@ -40,6 +44,11 @@ export default function ScheduleDetailPage() {
   })
 
   if (isLoading) return <p style={{ color: '#94a3b8' }}>Loading...</p>
+  if (isError) return (
+    <div style={{ background: '#fef2f2', borderRadius: '12px', padding: '24px' }}>
+      <p style={{ color: '#dc2626', fontSize: '14px' }}>Failed to load schedule. Check your backend connection.</p>
+    </div>
+  )
   if (!schedule) return <p style={{ color: '#ef4444' }}>Schedule not found</p>
 
   const unresolvedAlerts = schedule.alerts?.filter((a: any) => !a.is_resolved) || []
@@ -63,8 +72,8 @@ export default function ScheduleDetailPage() {
           </span>
         </div>
         <p style={{ color: '#64748b', fontSize: '14px' }}>
-          {format(new Date(schedule.scheduled_start), 'EEEE, MMMM d yyyy · h:mm a')} →{' '}
-          {format(new Date(schedule.scheduled_end), 'h:mm a')}
+          {formatDateTime(schedule.scheduled_start)} →{' '}
+          {formatTime(schedule.scheduled_end)}
           {' · '}{schedule.scheduled_duration_mins} mins scheduled
         </p>
         {schedule.actual_duration_mins && (
@@ -108,8 +117,8 @@ export default function ScheduleDetailPage() {
                         {a.participant_type.toUpperCase()}
                       </span>
                       <span style={{ fontSize: '13px', color: '#374151' }}>
-                        {a.join_time ? format(new Date(a.join_time), 'h:mm a') : '—'}
-                        {a.leave_time ? ` → ${format(new Date(a.leave_time), 'h:mm a')}` : ' → still in'}
+                        {a.join_time ? formatTime(a.join_time) : '—'}
+                        {a.leave_time ? ` → ${formatTime(a.leave_time)}` : ' → still in'}
                       </span>
                     </div>
                     <span style={{
@@ -155,7 +164,7 @@ export default function ScheduleDetailPage() {
                       {cs.students?.email || 'No email'}
                     </div>
                   </div>
-                  {cs.zoom_join_url && (
+                  {cs.zoom_join_url && schedule.status !== 'missed' && schedule.status !== 'completed' && (
                     <a
                       href={cs.zoom_join_url}
                       target='_blank'
@@ -202,13 +211,26 @@ export default function ScheduleDetailPage() {
                     }}>
                       {a.severity}
                     </span>
+                    {(a.teachers || a.students) && (
+                      <span style={{
+                        fontSize: '11px', padding: '1px 10px', borderRadius: '99px',
+                        background: a.teachers ? '#eff6ff' : '#f0fdf4',
+                        color: a.teachers ? '#3b82f6' : '#16a34a',
+                        fontWeight: '600', border: `1px solid ${a.teachers ? '#bfdbfe' : '#bbf7d0'}`
+                      }}>
+                        {a.teachers
+                          ? `👨‍🏫 Teacher · ${a.teachers.full_name}`
+                          : `👨‍🎓 Student · ${a.students?.full_name ?? 'Unknown'}`
+                        }
+                      </span>
+                    )}
                   </div>
                   <div style={{ fontSize: '13px', color: '#64748b', marginTop: '3px' }}>
                     {a.notes}
                   </div>
                   <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '3px' }}>
-                    {format(new Date(a.triggered_at), 'h:mm a')}
-                    {a.is_resolved && a.resolved_at && ` · Resolved ${format(new Date(a.resolved_at), 'h:mm a')}`}
+                    {formatTime(a.triggered_at)}
+                    {a.is_resolved && a.resolved_at && ` · Resolved ${formatTime(a.resolved_at)}`}
                   </div>
                 </div>
                 {!a.is_resolved && (

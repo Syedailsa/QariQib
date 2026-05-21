@@ -2,6 +2,7 @@
 'use client'
 import { useQuery } from '@tanstack/react-query'
 import { getTodaySchedules, getAlerts } from '@/lib/api'
+import { formatTime } from '@/lib/time'
 import { format } from 'date-fns'
 import Link from 'next/link'
 
@@ -19,10 +20,10 @@ const SEVERITY_COLORS: Record<string, string> = {
 }
 
 export default function DashboardPage() {
-  const { data: schedules = [], isLoading: loadingSchedules } =
+  const { data: schedules = [], isLoading: loadingSchedules, isError: errorSchedules } =
     useQuery({ queryKey: ['today-schedules'], queryFn: getTodaySchedules })
 
-  const { data: alerts = [], isLoading: loadingAlerts } =
+  const { data: alerts = [], isLoading: loadingAlerts, isError: errorAlerts } =
     useQuery({ queryKey: ['alerts'], queryFn: () => getAlerts(false) })
 
   return (
@@ -67,6 +68,8 @@ export default function DashboardPage() {
           </h3>
           {loadingSchedules ? (
             <p style={{ color: '#94a3b8' }}>Loading...</p>
+          ) : errorSchedules ? (
+            <p style={{ color: '#ef4444', fontSize: '14px' }}>Failed to load schedules. Check backend connection.</p>
           ) : schedules.length === 0 ? (
             <p style={{ color: '#94a3b8', fontSize: '14px' }}>No classes scheduled today.</p>
           ) : (
@@ -90,8 +93,8 @@ export default function DashboardPage() {
                           {s.teachers?.full_name}
                         </div>
                         <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
-                          {format(new Date(s.scheduled_start), 'h:mm a')} →{' '}
-                          {format(new Date(s.scheduled_end), 'h:mm a')}
+                          {formatTime(s.scheduled_start)} →{' '}
+                          {formatTime(s.scheduled_end)}
                           {' · '}{s.scheduled_duration_mins} mins
                         </div>
                       </div>
@@ -120,6 +123,8 @@ export default function DashboardPage() {
           </h3>
           {loadingAlerts ? (
             <p style={{ color: '#94a3b8' }}>Loading...</p>
+          ) : errorAlerts ? (
+            <p style={{ color: '#ef4444', fontSize: '14px' }}>Failed to load alerts.</p>
           ) : alerts.length === 0 ? (
             <p style={{ color: '#94a3b8', fontSize: '14px' }}>No active alerts.</p>
           ) : (
@@ -142,12 +147,25 @@ export default function DashboardPage() {
                     }}>
                       {a.severity.toUpperCase()}
                     </span>
+                    {(a.teachers || a.students) && (
+                      <span style={{
+                        fontSize: '11px', padding: '1px 10px', borderRadius: '99px',
+                        background: a.teachers ? '#eff6ff' : '#f0fdf4',
+                        color: a.teachers ? '#3b82f6' : '#16a34a',
+                        fontWeight: '600', border: `1px solid ${a.teachers ? '#bfdbfe' : '#bbf7d0'}`
+                      }}>
+                        {a.teachers
+                          ? `👨‍🏫 Teacher · ${a.teachers.full_name}`
+                          : `👨‍🎓 Student · ${a.students?.full_name ?? 'Unknown'}`
+                        }
+                      </span>
+                    )}
                   </div>
                   <div style={{ fontSize: '12px', color: '#64748b', marginTop: '3px' }}>
                     {a.notes}
                   </div>
                   <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '3px' }}>
-                    {format(new Date(a.triggered_at), 'h:mm a')}
+                    {formatTime(a.triggered_at)}
                   </div>
                 </div>
               ))}

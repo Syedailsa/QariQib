@@ -10,7 +10,7 @@ psycopg2-binary==2.9.*   # sync driver for alembic migrations
 httpx==0.27.*            # async HTTP client
 celery==5.3.*
 redis==5.0.*
+gevent==24.2.*               # high-concurrency worker pool for I/O-bound tasks
 python-jose[cryptography]==3.3.*  # JWT validation
 requests==2.31.*
 sentry-sdk==2.3.*
-apscheduler==3.10.*

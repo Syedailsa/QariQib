@@ -34,6 +34,8 @@ def create_teacher(body: TeacherCreate):
         'is_active':    True,
         'consent_given': False
     }).execute()
+    if not result.data:
+        raise HTTPException(status_code=500, detail='Failed to create teacher')
     return result.data[0]
 
 

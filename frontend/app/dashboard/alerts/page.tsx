@@ -1,6 +1,7 @@
 'use client'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getAlerts, resolveAlert } from '@/lib/api'
+import { formatTime } from '@/lib/time'
 import { format } from 'date-fns'
 import { useState } from 'react'
 import Link from 'next/link'
@@ -15,7 +16,7 @@ export default function AlertsPage() {
   const qc = useQueryClient()
   const [showResolved, setShowResolved] = useState(false)
 
-  const { data: alerts = [], isLoading } = useQuery({
+  const { data: alerts = [], isLoading, isError } = useQuery({
     queryKey: ['alerts', showResolved],
     queryFn: () => getAlerts(showResolved),
     refetchInterval: 15000
@@ -49,6 +50,15 @@ export default function AlertsPage() {
 
       {isLoading ? (
         <p style={{ color: '#94a3b8' }}>Loading...</p>
+      ) : isError ? (
+        <div style={{
+          background: '#fef2f2', borderRadius: '12px', padding: '24px',
+          textAlign: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
+        }}>
+          <p style={{ color: '#dc2626', fontSize: '14px' }}>
+            Failed to load alerts. Check your backend connection.
+          </p>
+        </div>
       ) : alerts.length === 0 ? (
         <div style={{
           background: '#fff', borderRadius: '12px', padding: '48px',
@@ -69,12 +79,15 @@ export default function AlertsPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+                    {/* Alert type */}
                     <span style={{
                       fontSize: '13px', fontWeight: '700',
                       color: SEVERITY_COLORS[a.severity]
                     }}>
                       {a.alert_type.replace(/_/g, ' ').toUpperCase()}
                     </span>
+
+                    {/* Severity badge */}
                     <span style={{
                       fontSize: '11px', padding: '2px 8px', borderRadius: '99px',
                       background: SEVERITY_COLORS[a.severity] + '20',
@@ -82,12 +95,26 @@ export default function AlertsPage() {
                     }}>
                       {a.severity.toUpperCase()}
                     </span>
+
+                    {(a.teachers || a.students) && (
+                      <span style={{
+                        fontSize: '11px', padding: '2px 10px', borderRadius: '99px',
+                        background: a.teachers ? '#eff6ff' : '#f0fdf4',
+                        color: a.teachers ? '#3b82f6' : '#16a34a',
+                        fontWeight: '600', border: `1px solid ${a.teachers ? '#bfdbfe' : '#bbf7d0'}`
+                      }}>
+                        {a.teachers
+                          ? `👨‍🏫 Teacher · ${a.teachers.full_name}`
+                          : `👨‍🎓 Student · ${a.students?.full_name ?? 'Unknown'}`
+                        }
+                      </span>
+                    )}
                   </div>
                   <p style={{ fontSize: '14px', color: '#374151', marginBottom: '8px' }}>
                     {a.notes}
                   </p>
                   <div style={{ display: 'flex', gap: '16px', fontSize: '12px', color: '#94a3b8' }}>
-                    <span>{format(new Date(a.triggered_at), 'MMM d · h:mm a')}</span>
+                    <span>{formatTime(a.triggered_at)}</span>
                     {a.class_schedules && (
                       <Link
                         href={`/dashboard/schedules/${a.class_schedules.id}`}

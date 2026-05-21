@@ -3,6 +3,8 @@ from pydantic import BaseModel
 from typing import List, Optional
 from db.supabase import supabase
 from services.class_service import setup_class
+from services.scheduler import schedule_class_jobs
+from datetime import datetime
 
 router = APIRouter(prefix='/api/v1/schedules', tags=['schedules'])
 
@@ -34,7 +36,8 @@ def list_schedules():
                 zoom_registrant_id,
                 zoom_join_url,
                 students(id, full_name, email)
-            )
+            ),
+            alerts(id, alert_type, severity, is_resolved)
         ''') \
         .order('scheduled_start', desc=True) \
         .execute()
@@ -79,7 +82,7 @@ def get_schedule(schedule_id: str):
                 students(id, full_name, email)
             ),
             attendance_records(*),
-            alerts(*)
+            alerts(*, teachers(id, full_name), students(id, full_name))
         ''') \
         .eq('id', schedule_id) \
         .execute()
@@ -122,7 +125,24 @@ def create_schedule(body: ScheduleCreate):
             'student_id':  student_id
         }).execute()
 
-    meeting_id = setup_class(schedule_id)
+    try:
+        meeting_id = setup_class(schedule_id)
+    except Exception as e:
+        print(f'[ERROR] Zoom setup failed for {schedule_id}: {e}')
+        supabase.table('class_students').delete().eq('schedule_id', schedule_id).execute()
+        supabase.table('class_schedules').delete().eq('id', schedule_id).execute()
+        raise HTTPException(status_code=502, detail=f'Failed to create Zoom meeting: {str(e)}')
+
+    # Queue Celery tasks in a daemon thread so the HTTP response is never delayed
+    # by broker connection latency or a slow/down Redis instance.
+    import threading
+    def _queue_tasks():
+        try:
+            scheduled_start_dt = datetime.fromisoformat(body.scheduled_start.replace('Z', '+00:00'))
+            schedule_class_jobs(schedule_id, scheduled_start_dt)
+        except Exception as e:
+            print(f'[WARNING] Failed to queue Celery tasks for {schedule_id}: {e}', flush=True)
+    threading.Thread(target=_queue_tasks, daemon=True).start()
 
     return {
         'schedule_id':    schedule_id,
@@ -147,7 +167,7 @@ def update_schedule(schedule_id: str, body: ScheduleUpdate):
             detail=f'Cannot edit a class with status: {existing.data[0]["status"]}'
         )
 
-    updates = {k: v for k, v in body.dict().items() if v is not None}
+    updates = body.model_dump(exclude_none=True)
     if not updates:
         raise HTTPException(status_code=400, detail='No fields to update')
 
@@ -190,4 +210,64 @@ def update_schedule(schedule_id: str, body: ScheduleUpdate):
     except Exception as e:
         print(f'[ZOOM] Failed to update meeting: {e}')
 
+    # If the start time changed, old ETA tasks would fire at the wrong time.
+    # Revoke them and re-queue at the new time. Non-fatal: recover_missing_tasks
+    # on next startup handles it if Celery/Redis is unavailable.
+    if body.scheduled_start:
+        import threading
+        _new_start = body.scheduled_start
+        def _reschedule():
+            try:
+                from services.scheduler import revoke_class_jobs, schedule_class_jobs
+                new_start_dt = datetime.fromisoformat(_new_start.replace('Z', '+00:00'))
+                revoke_class_jobs(schedule_id)
+                schedule_class_jobs(schedule_id, new_start_dt)
+            except Exception as e:
+                print(f'[WARNING] Failed to reschedule Celery tasks for {schedule_id}: {e}', flush=True)
+        threading.Thread(target=_reschedule, daemon=True).start()
+
     return result.data[0]
+
+@router.delete('/{schedule_id}', status_code=204)
+def delete_schedule(schedule_id: str):
+    existing = supabase.table('class_schedules') \
+        .select('status, zoom_meeting_id') \
+        .eq('id', schedule_id) \
+        .execute()
+
+    if not existing.data:
+        raise HTTPException(status_code=404, detail='Schedule not found')
+
+    # Cancel Celery tasks BEFORE deleting DB records — if we deleted first and
+    # a task fired in the gap it would crash trying to query a deleted schedule
+    try:
+        from services.scheduler import revoke_class_jobs
+        revoke_class_jobs(schedule_id)
+    except Exception as e:
+        print(f'[WARNING] Could not revoke Celery tasks for {schedule_id}: {e}', flush=True)
+
+    zoom_meeting_id = existing.data[0].get('zoom_meeting_id')
+
+    # Delete Zoom meeting if exists
+    if zoom_meeting_id:
+        try:
+            import httpx
+            from services.zoom_api import get_headers
+            httpx.delete(
+                f'https://api.zoom.us/v2/meetings/{zoom_meeting_id}',
+                headers=get_headers()
+            )
+            print(f'[ZOOM] Meeting {zoom_meeting_id} deleted')
+        except Exception as e:
+            print(f'[ZOOM] Failed to delete meeting: {e}')
+
+    # Delete related records first (foreign key constraints)
+    supabase.table('attendance_records').delete().eq('schedule_id', schedule_id).execute()
+    supabase.table('alerts').delete().eq('schedule_id', schedule_id).execute()
+    supabase.table('absences').delete().eq('schedule_id', schedule_id).execute()
+    supabase.table('class_students').delete().eq('schedule_id', schedule_id).execute()
+
+    # Delete the schedule itself
+    supabase.table('class_schedules').delete().eq('id', schedule_id).execute()
+
+    return None

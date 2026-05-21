@@ -14,10 +14,17 @@ export default function NewSchedulePage() {
     student_ids: [] as string[],
     scheduled_start: '',
     scheduled_end: '',
-    scheduled_duration_mins: 30,
     session_type: 'group'
   })
   const [error, setError] = useState('')
+
+  const calcDuration = (() => {
+    if (!form.scheduled_start || !form.scheduled_end) return 0
+    const mins = Math.round(
+      (new Date(form.scheduled_end).getTime() - new Date(form.scheduled_start).getTime()) / 60000
+    )
+    return mins > 0 ? mins : 0
+  })()
 
   const mutation = useMutation({
     mutationFn: createSchedule,
@@ -40,8 +47,17 @@ export default function NewSchedulePage() {
     if (!form.teacher_id) return setError('Please select a teacher')
     if (form.student_ids.length === 0) return setError('Please select at least one student')
     if (!form.scheduled_start || !form.scheduled_end) return setError('Please set start and end time')
+    if (new Date(form.scheduled_end) <= new Date(form.scheduled_start))
+      return setError('End time must be after start time')
+    if (calcDuration < 15)
+      return setError('Class duration cannot be less than 15 minutes. Please set a later end time.')
     setError('')
-    mutation.mutate(form)
+    mutation.mutate({
+      ...form,
+      scheduled_start: new Date(form.scheduled_start).toISOString(),
+      scheduled_end: new Date(form.scheduled_end).toISOString(),
+      scheduled_duration_mins: calcDuration,
+    })
   }
 
   return (
@@ -138,17 +154,27 @@ export default function NewSchedulePage() {
               </div>
               <div>
                 <label style={{ fontSize: '13px', fontWeight: '500', color: '#374151', display: 'block', marginBottom: '6px' }}>
-                  Duration (mins)
+                  Duration
                 </label>
-                <input
-                  type='number'
-                  value={form.scheduled_duration_mins}
-                  onChange={e => setForm(f => ({ ...f, scheduled_duration_mins: parseInt(e.target.value) }))}
-                  style={{
-                    width: '100%', padding: '8px 12px', border: '1px solid #e2e8f0',
-                    borderRadius: '8px', fontSize: '14px', outline: 'none'
-                  }}
-                />
+                <div style={{
+                  padding: '8px 12px',
+                  border: `1px solid ${calcDuration > 0 && calcDuration < 15 ? '#fca5a5' : '#e2e8f0'}`,
+                  borderRadius: '8px', fontSize: '14px',
+                  background: '#f8fafc',
+                  color: calcDuration === 0 ? '#94a3b8' : calcDuration < 15 ? '#ef4444' : '#0f172a',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+                }}>
+                  <span>
+                    {calcDuration === 0
+                      ? 'Set start and end time'
+                      : `${calcDuration} minutes`}
+                  </span>
+                  {calcDuration > 0 && calcDuration < 15 && (
+                    <span style={{ fontSize: '12px', color: '#ef4444', fontWeight: '500' }}>
+                      ⚠ Minimum 15 mins
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           </div>

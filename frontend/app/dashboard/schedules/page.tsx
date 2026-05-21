@@ -1,6 +1,7 @@
 'use client'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getSchedules, deleteSchedule } from '@/lib/api'
+import { formatTime, formatDateHeader } from '@/lib/time'
 import { format } from 'date-fns'
 import Link from 'next/link'
 import { useState } from 'react'
@@ -35,8 +36,9 @@ const STATUS_CONFIG: Record<string, { bg: string, border: string, badge: string,
 export default function SchedulesPage() {
   const qc = useQueryClient()
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+  const [deleteError, setDeleteError] = useState('')
 
-  const { data: schedules = [], isLoading } = useQuery({
+  const { data: schedules = [], isLoading, isError } = useQuery({
     queryKey: ['schedules'],
     queryFn: getSchedules,
     refetchInterval: 30000
@@ -47,7 +49,9 @@ export default function SchedulesPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['schedules'] })
       setConfirmDelete(null)
-    }
+      setDeleteError('')
+    },
+    onError: (e: any) => setDeleteError(e.response?.data?.detail || 'Failed to delete. Please try again.')
   })
 
   // Group by date
@@ -93,9 +97,12 @@ export default function SchedulesPage() {
             <h3 style={{ fontSize: '17px', fontWeight: '600', marginBottom: '8px' }}>
               Delete this class?
             </h3>
-            <p style={{ fontSize: '14px', color: '#64748b', marginBottom: '20px' }}>
+            <p style={{ fontSize: '14px', color: '#64748b', marginBottom: '12px' }}>
               This will delete the Zoom meeting and all attendance records. This cannot be undone.
             </p>
+            {deleteError && (
+              <p style={{ fontSize: '13px', color: '#dc2626', marginBottom: '12px' }}>{deleteError}</p>
+            )}
             <div style={{ display: 'flex', gap: '10px' }}>
               <button
                 onClick={() => deleteMutation.mutate(confirmDelete)}
@@ -125,6 +132,15 @@ export default function SchedulesPage() {
 
       {isLoading ? (
         <p style={{ color: '#94a3b8' }}>Loading...</p>
+      ) : isError ? (
+        <div style={{
+          background: '#fef2f2', borderRadius: '12px', padding: '32px',
+          textAlign: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
+        }}>
+          <p style={{ color: '#dc2626', fontSize: '14px' }}>
+            Failed to load schedules. Check your backend connection.
+          </p>
+        </div>
       ) : schedules.length === 0 ? (
         <div style={{
           background: '#fff', borderRadius: '12px', padding: '48px',
@@ -149,7 +165,7 @@ export default function SchedulesPage() {
                 marginBottom: '12px', paddingBottom: '8px',
                 borderBottom: '1px solid #e2e8f0'
               }}>
-                {format(new Date(date + 'T12:00:00'), 'EEEE, MMMM d yyyy')}
+                {formatDateHeader(date + 'T12:00:00')}
               </div>
 
               {/* Grid */}
@@ -197,8 +213,8 @@ export default function SchedulesPage() {
 
                       {/* Time */}
                       <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '8px' }}>
-                        {format(new Date(s.scheduled_start), 'h:mm a')} →{' '}
-                        {format(new Date(s.scheduled_end), 'h:mm a')}
+                        {formatTime(s.scheduled_start)} →{' '}
+                        {formatTime(s.scheduled_end)}
                         {' · '}{s.scheduled_duration_mins} mins
                       </div>
 

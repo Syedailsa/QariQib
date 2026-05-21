@@ -20,8 +20,7 @@ def setup_class(schedule_id: str):
         .execute()
 
     if not schedule.data:
-        print(f'[ERROR] Schedule {schedule_id} not found')
-        return
+        raise RuntimeError(f'Schedule {schedule_id} not found')
 
     schedule = schedule.data[0]
     teacher = schedule['teachers']
