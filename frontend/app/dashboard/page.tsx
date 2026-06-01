@@ -6,17 +6,17 @@ import { formatTime } from '@/lib/time'
 import { format } from 'date-fns'
 import Link from 'next/link'
 
-const STATUS_COLORS: Record<string, string> = {
-  scheduled: '#3b82f6',
-  live:       '#22c55e',
-  completed:  '#64748b',
-  missed:     '#ef4444',
+const STATUS_BADGE: Record<string, string> = {
+  scheduled: 'bg-blue-500/10 text-blue-500',
+  live:       'bg-green-500/10 text-green-500',
+  completed:  'bg-slate-500/10 text-slate-500',
+  missed:     'bg-red-500/10 text-red-500',
 }
 
-const SEVERITY_COLORS: Record<string, string> = {
-  high:   '#ef4444',
-  medium: '#f97316',
-  low:    '#eab308',
+const SEVERITY: Record<string, { card: string; text: string }> = {
+  high:   { card: 'border border-red-500/25 bg-red-500/5',       text: 'text-red-500'    },
+  medium: { card: 'border border-orange-500/25 bg-orange-500/5', text: 'text-orange-500' },
+  low:    { card: 'border border-yellow-500/25 bg-yellow-500/5', text: 'text-yellow-500' },
 }
 
 export default function DashboardPage() {
@@ -26,86 +26,53 @@ export default function DashboardPage() {
   const { data: alerts = [], isLoading: loadingAlerts, isError: errorAlerts } =
     useQuery({ queryKey: ['alerts'], queryFn: () => getAlerts(false) })
 
+  const stats = [
+    { label: 'Total Classes Today', value: schedules.length,                                              border: 'border-l-blue-500',  text: 'text-blue-500'  },
+    { label: 'Live Now',            value: schedules.filter((s: any) => s.status === 'live').length,      border: 'border-l-green-500', text: 'text-green-500' },
+    { label: 'Completed',           value: schedules.filter((s: any) => s.status === 'completed').length, border: 'border-l-slate-500', text: 'text-slate-500' },
+    { label: 'Unresolved Alerts',   value: alerts.length,                                                 border: 'border-l-red-500',   text: 'text-red-500'   },
+  ]
+
   return (
     <div>
-      <h2 style={{ fontSize: '24px', fontWeight: '700', marginBottom: '8px' }}>
-        Today's Overview
-      </h2>
-      <p style={{ color: '#64748b', marginBottom: '32px' }}>
-        {format(new Date(), 'EEEE, MMMM d yyyy')}
-      </p>
+      <h2 className="text-2xl font-bold mb-2">Today's Overview</h2>
+      <p className="text-slate-500 mb-8">{format(new Date(), 'EEEE, MMMM d yyyy')}</p>
 
       {/* Stats row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '32px' }}>
-        {[
-          { label: 'Total Classes Today', value: schedules.length, color: '#3b82f6' },
-          { label: 'Live Now', value: schedules.filter((s: any) => s.status === 'live').length, color: '#22c55e' },
-          { label: 'Completed', value: schedules.filter((s: any) => s.status === 'completed').length, color: '#64748b' },
-          { label: 'Unresolved Alerts', value: alerts.length, color: '#ef4444' },
-        ].map(stat => (
-          <div key={stat.label} style={{
-            background: '#fff',
-            borderRadius: '12px',
-            padding: '20px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-            borderLeft: `4px solid ${stat.color}`
-          }}>
-            <div style={{ fontSize: '28px', fontWeight: '700', color: stat.color }}>
-              {stat.value}
-            </div>
-            <div style={{ fontSize: '13px', color: '#64748b', marginTop: '4px' }}>
-              {stat.label}
-            </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {stats.map(stat => (
+          <div key={stat.label} className={`bg-white rounded-xl p-5 shadow-sm border-l-4 ${stat.border}`}>
+            <div className={`text-[28px] font-bold ${stat.text}`}>{stat.value}</div>
+            <div className="text-[13px] text-slate-500 mt-1">{stat.label}</div>
           </div>
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Today's schedule */}
-        <div style={{ background: '#fff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-          <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '16px' }}>
-            Today's Classes
-          </h3>
+        <div className="bg-white rounded-xl p-6 shadow-sm">
+          <h3 className="text-base font-semibold mb-4">Today's Classes</h3>
           {loadingSchedules ? (
-            <p style={{ color: '#94a3b8' }}>Loading...</p>
+            <p className="text-slate-400">Loading...</p>
           ) : errorSchedules ? (
-            <p style={{ color: '#ef4444', fontSize: '14px' }}>Failed to load schedules. Check backend connection.</p>
+            <p className="text-red-500 text-sm">Failed to load schedules. Check backend connection.</p>
           ) : schedules.length === 0 ? (
-            <p style={{ color: '#94a3b8', fontSize: '14px' }}>No classes scheduled today.</p>
+            <p className="text-slate-400 text-sm">No classes scheduled today.</p>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div className="flex flex-col gap-3">
               {schedules.map((s: any) => (
-                <Link
-                  key={s.id}
-                  href={`/dashboard/schedules/${s.id}`}
-                  style={{ textDecoration: 'none' }}
-                >
-                  <div style={{
-                    padding: '12px 16px',
-                    borderRadius: '8px',
-                    border: '1px solid #e2e8f0',
-                    cursor: 'pointer',
-                    transition: 'border-color 0.15s'
-                  }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Link key={s.id} href={`/dashboard/schedules/${s.id}`} className="no-underline">
+                  <div className="px-4 py-3 rounded-lg border border-slate-200 cursor-pointer hover:border-slate-300 transition-colors duration-150">
+                    <div className="flex justify-between items-center">
                       <div>
-                        <div style={{ fontSize: '14px', fontWeight: '500', color: '#0f172a' }}>
-                          {s.teachers?.full_name}
-                        </div>
-                        <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
+                        <div className="text-sm font-medium text-slate-900">{s.teachers?.full_name}</div>
+                        <div className="text-xs text-slate-500 mt-0.5">
                           {formatTime(s.scheduled_start)} →{' '}
                           {formatTime(s.scheduled_end)}
                           {' · '}{s.scheduled_duration_mins} mins
                         </div>
                       </div>
-                      <span style={{
-                        fontSize: '11px',
-                        fontWeight: '500',
-                        padding: '3px 10px',
-                        borderRadius: '99px',
-                        background: STATUS_COLORS[s.status] + '20',
-                        color: STATUS_COLORS[s.status]
-                      }}>
+                      <span className={`text-[11px] font-medium px-2.5 py-[3px] rounded-full ${STATUS_BADGE[s.status] ?? 'bg-slate-100 text-slate-500'}`}>
                         {s.status.toUpperCase()}
                       </span>
                     </div>
@@ -117,60 +84,47 @@ export default function DashboardPage() {
         </div>
 
         {/* Unresolved alerts */}
-        <div style={{ background: '#fff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-          <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '16px' }}>
-            Active Alerts
-          </h3>
+        <div className="bg-white rounded-xl p-6 shadow-sm">
+          <h3 className="text-base font-semibold mb-4">Active Alerts</h3>
           {loadingAlerts ? (
-            <p style={{ color: '#94a3b8' }}>Loading...</p>
+            <p className="text-slate-400">Loading...</p>
           ) : errorAlerts ? (
-            <p style={{ color: '#ef4444', fontSize: '14px' }}>Failed to load alerts.</p>
+            <p className="text-red-500 text-sm">Failed to load alerts.</p>
           ) : alerts.length === 0 ? (
-            <p style={{ color: '#94a3b8', fontSize: '14px' }}>No active alerts.</p>
+            <p className="text-slate-400 text-sm">No active alerts.</p>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {alerts.slice(0, 8).map((a: any) => (
-                <div key={a.id} style={{
-                  padding: '10px 14px',
-                  borderRadius: '8px',
-                  border: `1px solid ${SEVERITY_COLORS[a.severity]}40`,
-                  background: SEVERITY_COLORS[a.severity] + '08'
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '13px', fontWeight: '500', color: '#0f172a' }}>
-                      {a.alert_type.replace(/_/g, ' ').toUpperCase()}
-                    </span>
-                    <span style={{
-                      fontSize: '11px',
-                      color: SEVERITY_COLORS[a.severity],
-                      fontWeight: '600'
-                    }}>
-                      {a.severity.toUpperCase()}
-                    </span>
-                    {(a.teachers || a.students) && (
-                      <span style={{
-                        fontSize: '11px', padding: '1px 10px', borderRadius: '99px',
-                        background: a.teachers ? '#eff6ff' : '#f0fdf4',
-                        color: a.teachers ? '#3b82f6' : '#16a34a',
-                        fontWeight: '600', border: `1px solid ${a.teachers ? '#bfdbfe' : '#bbf7d0'}`
-                      }}>
-                        {a.teachers
-                          ? `👨‍🏫 Teacher · ${a.teachers.full_name}`
-                          : `👨‍🎓 Student · ${a.students?.full_name ?? 'Unknown'}`
-                        }
+            <div className="flex flex-col gap-2.5">
+              {alerts.slice(0, 8).map((a: any) => {
+                const sev = SEVERITY[a.severity] ?? { card: 'border border-slate-200', text: 'text-slate-500' }
+                return (
+                  <div key={a.id} className={`px-3.5 py-2.5 rounded-lg ${sev.card}`}>
+                    <div className="flex justify-between">
+                      <span className="text-[13px] font-medium text-slate-900">
+                        {a.alert_type.replace(/_/g, ' ').toUpperCase()}
                       </span>
-                    )}
+                      <span className={`text-[11px] font-semibold ${sev.text}`}>
+                        {a.severity.toUpperCase()}
+                      </span>
+                      {(a.teachers || a.students) && (
+                        <span className={`text-[11px] px-2.5 py-px rounded-full font-semibold border ${
+                          a.teachers
+                            ? 'bg-blue-50 text-blue-500 border-blue-200'
+                            : 'bg-green-50 text-green-600 border-green-200'
+                        }`}>
+                          {a.teachers
+                            ? `👨‍🏫 Teacher · ${a.teachers.full_name}`
+                            : `👨‍🎓 Student · ${a.students?.full_name ?? 'Unknown'}`
+                          }
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-slate-500 mt-[3px]">{a.notes}</div>
+                    <div className="text-[11px] text-slate-400 mt-[3px]">{formatTime(a.triggered_at)}</div>
                   </div>
-                  <div style={{ fontSize: '12px', color: '#64748b', marginTop: '3px' }}>
-                    {a.notes}
-                  </div>
-                  <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '3px' }}>
-                    {formatTime(a.triggered_at)}
-                  </div>
-                </div>
-              ))}
+                )
+              })}
               {alerts.length > 8 && (
-                <Link href='/dashboard/alerts' style={{ fontSize: '13px', color: '#3b82f6' }}>
+                <Link href="/dashboard/alerts" className="text-[13px] text-blue-500">
                   View all {alerts.length} alerts →
                 </Link>
               )}

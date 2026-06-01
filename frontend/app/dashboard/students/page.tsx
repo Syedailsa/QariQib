@@ -29,78 +29,56 @@ export default function StudentsPage() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+      <div className="flex justify-between items-center mb-6">
         <div>
-          <h2 style={{ fontSize: '24px', fontWeight: '700' }}>Students</h2>
-          <p style={{ color: '#64748b', fontSize: '14px', marginTop: '4px' }}>
-            Manage registered students
-          </p>
+          <h2 className="text-2xl font-bold">Students</h2>
+          <p className="text-slate-500 text-sm mt-1">Manage registered students</p>
         </div>
         <button
           onClick={() => setShowForm(!showForm)}
-          style={{
-            background: '#3b82f6', color: '#fff', border: 'none',
-            padding: '10px 20px', borderRadius: '8px', cursor: 'pointer',
-            fontSize: '14px', fontWeight: '500'
-          }}
+          className="bg-blue-500 text-white border-none px-5 py-2.5 rounded-lg cursor-pointer text-sm font-medium"
         >
           + Add Student
         </button>
       </div>
 
       {showForm && (
-        <div style={{
-          background: '#fff', borderRadius: '12px', padding: '24px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.08)', marginBottom: '24px'
-        }}>
-          <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '16px' }}>New Student</h3>
+        <div className="bg-white rounded-xl p-6 shadow-sm mb-6">
+          <h3 className="text-base font-semibold mb-4">New Student</h3>
           {error && (
-            <div style={{ background: '#fef2f2', color: '#dc2626', padding: '10px 14px', borderRadius: '8px', marginBottom: '16px', fontSize: '14px' }}>
-              {error}
-            </div>
+            <div className="bg-red-50 text-red-600 px-3.5 py-2.5 rounded-lg mb-4 text-sm">{error}</div>
           )}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {[
-              { key: 'full_name', label: 'Full Name', required: true },
-              { key: 'email', label: 'Student Email', required: false },
-              { key: 'parent_name', label: 'Parent Name', required: false },
+              { key: 'full_name',    label: 'Full Name',    required: true  },
+              { key: 'email',        label: 'Student Email', required: false },
+              { key: 'parent_name',  label: 'Parent Name',  required: false },
               { key: 'parent_email', label: 'Parent Email', required: false },
               { key: 'parent_phone', label: 'Parent Phone', required: false },
             ].map(field => (
               <div key={field.key}>
-                <label style={{ fontSize: '13px', fontWeight: '500', color: '#374151', display: 'block', marginBottom: '6px' }}>
-                  {field.label} {field.required && <span style={{ color: '#ef4444' }}>*</span>}
+                <label className="text-[13px] font-medium text-gray-700 block mb-1.5">
+                  {field.label} {field.required && <span className="text-red-500">*</span>}
                 </label>
                 <input
                   value={(form as any)[field.key]}
                   onChange={e => setForm(f => ({ ...f, [field.key]: e.target.value }))}
-                  style={{
-                    width: '100%', padding: '8px 12px', border: '1px solid #e2e8f0',
-                    borderRadius: '8px', fontSize: '14px', outline: 'none'
-                  }}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none"
                 />
               </div>
             ))}
           </div>
-          <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+          <div className="flex gap-3 mt-5">
             <button
               onClick={() => createMutation.mutate(form)}
               disabled={createMutation.isPending}
-              style={{
-                background: '#3b82f6', color: '#fff', border: 'none',
-                padding: '10px 24px', borderRadius: '8px', cursor: 'pointer',
-                fontSize: '14px', fontWeight: '500'
-              }}
+              className="bg-blue-500 text-white border-none px-6 py-2.5 rounded-lg cursor-pointer text-sm font-medium"
             >
               {createMutation.isPending ? 'Saving...' : 'Save Student'}
             </button>
             <button
               onClick={() => setShowForm(false)}
-              style={{
-                background: '#f1f5f9', color: '#374151', border: 'none',
-                padding: '10px 24px', borderRadius: '8px', cursor: 'pointer',
-                fontSize: '14px'
-              }}
+              className="bg-slate-100 text-gray-700 border-none px-6 py-2.5 rounded-lg cursor-pointer text-sm"
             >
               Cancel
             </button>
@@ -109,14 +87,14 @@ export default function StudentsPage() {
       )}
 
       {isLoading ? (
-        <p style={{ color: '#94a3b8' }}>Loading...</p>
+        <p className="text-slate-400">Loading...</p>
       ) : (
-        <div style={{ background: '#fff', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <table className="w-full border-collapse">
             <thead>
-              <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+              <tr className="bg-slate-50 border-b border-slate-200">
                 {['Name', 'Email', 'Parent', 'Parent Email', 'Parent Phone'].map(h => (
-                  <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: '13px', fontWeight: '600', color: '#374151' }}>
+                  <th key={h} className="px-4 py-3 text-left text-[13px] font-semibold text-gray-700">
                     {h}
                   </th>
                 ))}
@@ -125,17 +103,17 @@ export default function StudentsPage() {
             <tbody>
               {students.length === 0 ? (
                 <tr>
-                  <td colSpan={5} style={{ padding: '32px', textAlign: 'center', color: '#94a3b8', fontSize: '14px' }}>
+                  <td colSpan={5} className="p-8 text-center text-slate-400 text-sm">
                     No students yet. Add your first student above.
                   </td>
                 </tr>
               ) : students.map((s: any) => (
-                <tr key={s.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                  <td style={{ padding: '14px 16px', fontSize: '14px', fontWeight: '500' }}>{s.full_name}</td>
-                  <td style={{ padding: '14px 16px', fontSize: '14px', color: '#64748b' }}>{s.email || '—'}</td>
-                  <td style={{ padding: '14px 16px', fontSize: '14px', color: '#64748b' }}>{s.parent_name || '—'}</td>
-                  <td style={{ padding: '14px 16px', fontSize: '14px', color: '#64748b' }}>{s.parent_email || '—'}</td>
-                  <td style={{ padding: '14px 16px', fontSize: '14px', color: '#64748b' }}>{s.parent_phone || '—'}</td>
+                <tr key={s.id} className="border-b border-slate-50">
+                  <td className="px-4 py-3.5 text-sm font-medium">{s.full_name}</td>
+                  <td className="px-4 py-3.5 text-sm text-slate-500">{s.email || '—'}</td>
+                  <td className="px-4 py-3.5 text-sm text-slate-500">{s.parent_name || '—'}</td>
+                  <td className="px-4 py-3.5 text-sm text-slate-500">{s.parent_email || '—'}</td>
+                  <td className="px-4 py-3.5 text-sm text-slate-500">{s.parent_phone || '—'}</td>
                 </tr>
               ))}
             </tbody>

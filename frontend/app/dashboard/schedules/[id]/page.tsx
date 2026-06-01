@@ -4,24 +4,24 @@ import { getSchedule, resolveAlert } from '@/lib/api'
 import { formatTime, formatDateTime } from '@/lib/time'
 import { useParams } from 'next/navigation'
 
-const STATUS_COLORS: Record<string, string> = {
-  scheduled: '#3b82f6',
-  live:       '#22c55e',
-  completed:  '#64748b',
-  missed:     '#ef4444',
+const STATUS_BADGE: Record<string, string> = {
+  scheduled: 'bg-blue-500/10 text-blue-500',
+  live:       'bg-green-500/10 text-green-500',
+  completed:  'bg-slate-500/10 text-slate-500',
+  missed:     'bg-red-500/10 text-red-500',
 }
 
-const SEVERITY_COLORS: Record<string, string> = {
-  high:   '#ef4444',
-  medium: '#f97316',
-  low:    '#eab308',
+const SEVERITY: Record<string, { card: string; text: string; badge: string }> = {
+  high:   { card: 'border border-red-500/25 bg-red-500/5',       text: 'text-red-500',    badge: 'bg-red-500/10 text-red-500'       },
+  medium: { card: 'border border-orange-500/25 bg-orange-500/5', text: 'text-orange-500', badge: 'bg-orange-500/10 text-orange-500' },
+  low:    { card: 'border border-yellow-500/25 bg-yellow-500/5', text: 'text-yellow-500', badge: 'bg-yellow-500/10 text-yellow-500' },
 }
 
-const ATTENDANCE_COLORS: Record<string, string> = {
-  present:          '#22c55e',
-  late:             '#f97316',
-  absent:           '#ef4444',
-  early_departure:  '#8b5cf6',
+const ATTENDANCE_BADGE: Record<string, string> = {
+  present:         'bg-green-500/10 text-green-500',
+  late:            'bg-orange-500/10 text-orange-500',
+  absent:          'bg-red-500/10 text-red-500',
+  early_departure: 'bg-violet-500/10 text-violet-500',
 }
 
 export default function ScheduleDetailPage() {
@@ -43,13 +43,13 @@ export default function ScheduleDetailPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['schedule', id] })
   })
 
-  if (isLoading) return <p style={{ color: '#94a3b8' }}>Loading...</p>
+  if (isLoading) return <p className="text-slate-400">Loading...</p>
   if (isError) return (
-    <div style={{ background: '#fef2f2', borderRadius: '12px', padding: '24px' }}>
-      <p style={{ color: '#dc2626', fontSize: '14px' }}>Failed to load schedule. Check your backend connection.</p>
+    <div className="bg-red-50 rounded-xl p-6">
+      <p className="text-red-600 text-sm">Failed to load schedule. Check your backend connection.</p>
     </div>
   )
-  if (!schedule) return <p style={{ color: '#ef4444' }}>Schedule not found</p>
+  if (!schedule) return <p className="text-red-500">Schedule not found</p>
 
   const unresolvedAlerts = schedule.alerts?.filter((a: any) => !a.is_resolved) || []
   const resolvedAlerts = schedule.alerts?.filter((a: any) => a.is_resolved) || []
@@ -57,83 +57,60 @@ export default function ScheduleDetailPage() {
   return (
     <div>
       {/* Header */}
-      <div style={{ marginBottom: '24px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-          <h2 style={{ fontSize: '24px', fontWeight: '700' }}>
-            {schedule.teachers?.full_name}
-          </h2>
-          <span style={{
-            fontSize: '12px', fontWeight: '600', padding: '4px 14px',
-            borderRadius: '99px',
-            background: STATUS_COLORS[schedule.status] + '20',
-            color: STATUS_COLORS[schedule.status]
-          }}>
+      <div className="mb-6">
+        <div className="flex items-center gap-3 mb-2">
+          <h2 className="text-2xl font-bold">{schedule.teachers?.full_name}</h2>
+          <span className={`text-xs font-semibold px-3.5 py-1 rounded-full ${STATUS_BADGE[schedule.status] ?? 'bg-slate-100 text-slate-500'}`}>
             {schedule.status.toUpperCase()}
           </span>
         </div>
-        <p style={{ color: '#64748b', fontSize: '14px' }}>
+        <p className="text-slate-500 text-sm">
           {formatDateTime(schedule.scheduled_start)} →{' '}
           {formatTime(schedule.scheduled_end)}
           {' · '}{schedule.scheduled_duration_mins} mins scheduled
         </p>
         {schedule.actual_duration_mins && (
-          <p style={{ fontSize: '14px', marginTop: '4px' }}>
-            <span style={{ color: '#64748b' }}>Actual duration: </span>
-            <span style={{ fontWeight: '600' }}>{schedule.actual_duration_mins} mins</span>
-            <span style={{
-              marginLeft: '8px', fontSize: '13px',
-              color: schedule.duration_diff_mins < 0 ? '#ef4444' : '#22c55e'
-            }}>
+          <p className="text-sm mt-1">
+            <span className="text-slate-500">Actual duration: </span>
+            <span className="font-semibold">{schedule.actual_duration_mins} mins</span>
+            <span className={`ml-2 text-[13px] ${schedule.duration_diff_mins < 0 ? 'text-red-500' : 'text-green-500'}`}>
               ({schedule.duration_diff_mins > 0 ? '+' : ''}{schedule.duration_diff_mins} mins)
             </span>
           </p>
         )}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         {/* Attendance */}
-        <div style={{ background: '#fff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-          <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '16px' }}>
+        <div className="bg-white rounded-xl p-6 shadow-sm">
+          <h3 className="text-base font-semibold mb-4">
             Attendance ({schedule.attendance_records?.length || 0})
           </h3>
           {!schedule.attendance_records?.length ? (
-            <p style={{ color: '#94a3b8', fontSize: '14px' }}>No attendance records yet.</p>
+            <p className="text-slate-400 text-sm">No attendance records yet.</p>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div className="flex flex-col gap-2.5">
               {schedule.attendance_records.map((a: any) => (
-                <div key={a.id} style={{
-                  padding: '12px 14px', borderRadius: '8px',
-                  border: '1px solid #f1f5f9', background: '#fafafa'
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div key={a.id} className="px-3.5 py-3 rounded-lg border border-slate-100 bg-slate-50">
+                  <div className="flex justify-between items-center">
                     <div>
-                      <span style={{
-                        fontSize: '11px', fontWeight: '600', padding: '2px 8px',
-                        borderRadius: '99px', marginRight: '8px',
-                        background: a.participant_type === 'teacher' ? '#dbeafe' : '#f0fdf4',
-                        color: a.participant_type === 'teacher' ? '#1d4ed8' : '#15803d'
-                      }}>
+                      <span className={`text-[11px] font-semibold px-2 py-px rounded-full mr-2 ${
+                        a.participant_type === 'teacher' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'
+                      }`}>
                         {a.participant_type.toUpperCase()}
                       </span>
-                      <span style={{ fontSize: '13px', color: '#374151' }}>
+                      <span className="text-[13px] text-gray-700">
                         {a.join_time ? formatTime(a.join_time) : '—'}
                         {a.leave_time ? ` → ${formatTime(a.leave_time)}` : ' → still in'}
                       </span>
                     </div>
-                    <span style={{
-                      fontSize: '11px', fontWeight: '600', padding: '2px 10px',
-                      borderRadius: '99px',
-                      background: ATTENDANCE_COLORS[a.status] + '20',
-                      color: ATTENDANCE_COLORS[a.status]
-                    }}>
+                    <span className={`text-[11px] font-semibold px-2.5 py-px rounded-full ${ATTENDANCE_BADGE[a.status] ?? 'bg-slate-100 text-slate-500'}`}>
                       {a.status.replace(/_/g, ' ').toUpperCase()}
                     </span>
                   </div>
                   {a.duration_mins !== null && (
-                    <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>
-                      Duration: {a.duration_mins} mins
-                    </div>
+                    <div className="text-xs text-slate-400 mt-1">Duration: {a.duration_mins} mins</div>
                   )}
                 </div>
               ))}
@@ -142,34 +119,26 @@ export default function ScheduleDetailPage() {
         </div>
 
         {/* Enrolled Students */}
-        <div style={{ background: '#fff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-          <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '16px' }}>
+        <div className="bg-white rounded-xl p-6 shadow-sm">
+          <h3 className="text-base font-semibold mb-4">
             Enrolled Students ({schedule.class_students?.length || 0})
           </h3>
           {!schedule.class_students?.length ? (
-            <p style={{ color: '#94a3b8', fontSize: '14px' }}>No students enrolled.</p>
+            <p className="text-slate-400 text-sm">No students enrolled.</p>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div className="flex flex-col gap-2">
               {schedule.class_students.map((cs: any) => (
-                <div key={cs.id} style={{
-                  padding: '10px 14px', borderRadius: '8px',
-                  border: '1px solid #f1f5f9', background: '#fafafa',
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-                }}>
+                <div key={cs.id} className="px-3.5 py-2.5 rounded-lg border border-slate-100 bg-slate-50 flex justify-between items-center">
                   <div>
-                    <div style={{ fontSize: '14px', fontWeight: '500' }}>
-                      {cs.students?.full_name}
-                    </div>
-                    <div style={{ fontSize: '12px', color: '#94a3b8' }}>
-                      {cs.students?.email || 'No email'}
-                    </div>
+                    <div className="text-sm font-medium">{cs.students?.full_name}</div>
+                    <div className="text-xs text-slate-400">{cs.students?.email || 'No email'}</div>
                   </div>
                   {cs.zoom_join_url && schedule.status !== 'missed' && schedule.status !== 'completed' && (
                     <a
                       href={cs.zoom_join_url}
-                      target='_blank'
-                      rel='noopener noreferrer'
-                      style={{ fontSize: '12px', color: '#3b82f6', textDecoration: 'none' }}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-blue-500 no-underline"
                     >
                       Join Link →
                     </a>
@@ -183,72 +152,56 @@ export default function ScheduleDetailPage() {
 
       {/* Alerts */}
       {(unresolvedAlerts.length > 0 || resolvedAlerts.length > 0) && (
-        <div style={{ background: '#fff', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', marginTop: '24px' }}>
-          <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '16px' }}>
+        <div className="bg-white rounded-xl p-6 shadow-sm mt-6">
+          <h3 className="text-base font-semibold mb-4">
             Alerts ({unresolvedAlerts.length} active)
           </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {[...unresolvedAlerts, ...resolvedAlerts].map((a: any) => (
-              <div key={a.id} style={{
-                padding: '12px 16px', borderRadius: '8px',
-                border: `1px solid ${a.is_resolved ? '#e2e8f0' : SEVERITY_COLORS[a.severity] + '40'}`,
-                background: a.is_resolved ? '#f8fafc' : SEVERITY_COLORS[a.severity] + '08',
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                opacity: a.is_resolved ? 0.6 : 1
-              }}>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{
-                      fontSize: '12px', fontWeight: '600',
-                      color: a.is_resolved ? '#64748b' : SEVERITY_COLORS[a.severity]
-                    }}>
-                      {a.alert_type.replace(/_/g, ' ').toUpperCase()}
-                    </span>
-                    <span style={{
-                      fontSize: '11px', padding: '1px 8px', borderRadius: '99px',
-                      background: a.is_resolved ? '#e2e8f0' : SEVERITY_COLORS[a.severity] + '20',
-                      color: a.is_resolved ? '#64748b' : SEVERITY_COLORS[a.severity]
-                    }}>
-                      {a.severity}
-                    </span>
-                    {(a.teachers || a.students) && (
-                      <span style={{
-                        fontSize: '11px', padding: '1px 10px', borderRadius: '99px',
-                        background: a.teachers ? '#eff6ff' : '#f0fdf4',
-                        color: a.teachers ? '#3b82f6' : '#16a34a',
-                        fontWeight: '600', border: `1px solid ${a.teachers ? '#bfdbfe' : '#bbf7d0'}`
-                      }}>
-                        {a.teachers
-                          ? `👨‍🏫 Teacher · ${a.teachers.full_name}`
-                          : `👨‍🎓 Student · ${a.students?.full_name ?? 'Unknown'}`
-                        }
+          <div className="flex flex-col gap-2.5">
+            {[...unresolvedAlerts, ...resolvedAlerts].map((a: any) => {
+              const sev = SEVERITY[a.severity] ?? { card: 'border border-slate-200', text: 'text-slate-500', badge: 'bg-slate-100 text-slate-500' }
+              return (
+                <div key={a.id} className={`px-4 py-3 rounded-lg flex justify-between items-center ${
+                  a.is_resolved ? 'border border-slate-200 bg-slate-50 opacity-60' : sev.card
+                }`}>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs font-semibold ${a.is_resolved ? 'text-slate-500' : sev.text}`}>
+                        {a.alert_type.replace(/_/g, ' ').toUpperCase()}
                       </span>
-                    )}
+                      <span className={`text-[11px] px-2 py-px rounded-full ${a.is_resolved ? 'bg-slate-200 text-slate-500' : sev.badge}`}>
+                        {a.severity}
+                      </span>
+                      {(a.teachers || a.students) && (
+                        <span className={`text-[11px] px-2.5 py-px rounded-full font-semibold border ${
+                          a.teachers
+                            ? 'bg-blue-50 text-blue-500 border-blue-200'
+                            : 'bg-green-50 text-green-600 border-green-200'
+                        }`}>
+                          {a.teachers
+                            ? `👨‍🏫 Teacher · ${a.teachers.full_name}`
+                            : `👨‍🎓 Student · ${a.students?.full_name ?? 'Unknown'}`
+                          }
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[13px] text-slate-500 mt-[3px]">{a.notes}</div>
+                    <div className="text-[11px] text-slate-400 mt-[3px]">
+                      {formatTime(a.triggered_at)}
+                      {a.is_resolved && a.resolved_at && ` · Resolved ${formatTime(a.resolved_at)}`}
+                    </div>
                   </div>
-                  <div style={{ fontSize: '13px', color: '#64748b', marginTop: '3px' }}>
-                    {a.notes}
-                  </div>
-                  <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '3px' }}>
-                    {formatTime(a.triggered_at)}
-                    {a.is_resolved && a.resolved_at && ` · Resolved ${formatTime(a.resolved_at)}`}
-                  </div>
+                  {!a.is_resolved && (
+                    <button
+                      onClick={() => resolveMutation.mutate(a.id)}
+                      disabled={resolveMutation.isPending}
+                      className="text-xs font-medium px-3.5 py-1.5 rounded-lg border border-slate-200 bg-white cursor-pointer text-gray-700 shrink-0 ml-4"
+                    >
+                      Resolve
+                    </button>
+                  )}
                 </div>
-                {!a.is_resolved && (
-                  <button
-                    onClick={() => resolveMutation.mutate(a.id)}
-                    disabled={resolveMutation.isPending}
-                    style={{
-                      fontSize: '12px', fontWeight: '500', padding: '6px 14px',
-                      borderRadius: '8px', border: '1px solid #e2e8f0',
-                      background: '#fff', cursor: 'pointer', color: '#374151',
-                      flexShrink: 0, marginLeft: '16px'
-                    }}
-                  >
-                    Resolve
-                  </button>
-                )}
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       )}

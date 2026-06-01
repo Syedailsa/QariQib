@@ -6,30 +6,30 @@ import { format } from 'date-fns'
 import Link from 'next/link'
 import { useState } from 'react'
 
-const STATUS_CONFIG: Record<string, { bg: string, border: string, badge: string, text: string }> = {
+const STATUS_CONFIG: Record<string, { card: string; badge: string; text: string; viewBtn: string }> = {
   scheduled: {
-    bg:     '#fefce8',
-    border: '#fde047',
-    badge:  '#854d0e',
-    text:   '#713f12'
+    card:    'bg-yellow-50 border-[1.5px] border-yellow-300',
+    badge:   'bg-yellow-800/10 text-yellow-800',
+    text:    'text-yellow-900',
+    viewBtn: 'border border-yellow-300 text-yellow-800',
   },
   live: {
-    bg:     '#f0fdf4',
-    border: '#86efac',
-    badge:  '#15803d',
-    text:   '#14532d'
+    card:    'bg-green-50 border-[1.5px] border-green-300',
+    badge:   'bg-green-700/10 text-green-700',
+    text:    'text-green-900',
+    viewBtn: 'border border-green-300 text-green-700',
   },
   completed: {
-    bg:     '#f0fdf4',
-    border: '#4ade80',
-    badge:  '#166534',
-    text:   '#14532d'
+    card:    'bg-green-50 border-[1.5px] border-green-400',
+    badge:   'bg-green-800/10 text-green-800',
+    text:    'text-green-900',
+    viewBtn: 'border border-green-400 text-green-800',
   },
   missed: {
-    bg:     '#fef2f2',
-    border: '#fca5a5',
-    badge:  '#dc2626',
-    text:   '#7f1d1d'
+    card:    'bg-red-50 border-[1.5px] border-red-300',
+    badge:   'bg-red-600/10 text-red-600',
+    text:    'text-red-900',
+    viewBtn: 'border border-red-300 text-red-600',
   },
 }
 
@@ -54,7 +54,6 @@ export default function SchedulesPage() {
     onError: (e: any) => setDeleteError(e.response?.data?.detail || 'Failed to delete. Please try again.')
   })
 
-  // Group by date
   const grouped = schedules.reduce((acc: Record<string, any[]>, s: any) => {
     const date = format(new Date(s.scheduled_start), 'yyyy-MM-dd')
     if (!acc[date]) acc[date] = []
@@ -65,19 +64,13 @@ export default function SchedulesPage() {
   return (
     <div>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+      <div className="flex justify-between items-center mb-6">
         <div>
-          <h2 style={{ fontSize: '24px', fontWeight: '700' }}>All Schedules</h2>
-          <p style={{ color: '#64748b', fontSize: '14px', marginTop: '4px' }}>
-            {schedules.length} total classes
-          </p>
+          <h2 className="text-2xl font-bold">All Schedules</h2>
+          <p className="text-slate-500 text-sm mt-1">{schedules.length} total classes</p>
         </div>
-        <Link href='/dashboard/schedules/new'>
-          <button style={{
-            background: '#3b82f6', color: '#fff', border: 'none',
-            padding: '10px 20px', borderRadius: '8px', cursor: 'pointer',
-            fontSize: '14px', fontWeight: '500'
-          }}>
+        <Link href="/dashboard/schedules/new">
+          <button className="bg-blue-500 text-white border-none px-5 py-2.5 rounded-lg cursor-pointer text-sm font-medium">
             + New Class
           </button>
         </Link>
@@ -85,43 +78,26 @@ export default function SchedulesPage() {
 
       {/* Delete confirmation modal */}
       {confirmDelete && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 1000
-        }}>
-          <div style={{
-            background: '#fff', borderRadius: '12px', padding: '28px',
-            width: '380px', boxShadow: '0 20px 60px rgba(0,0,0,0.2)'
-          }}>
-            <h3 style={{ fontSize: '17px', fontWeight: '600', marginBottom: '8px' }}>
-              Delete this class?
-            </h3>
-            <p style={{ fontSize: '14px', color: '#64748b', marginBottom: '12px' }}>
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[1000]">
+          <div className="bg-white rounded-xl p-7 w-[380px] shadow-2xl">
+            <h3 className="text-[17px] font-semibold mb-2">Delete this class?</h3>
+            <p className="text-sm text-slate-500 mb-3">
               This will delete the Zoom meeting and all attendance records. This cannot be undone.
             </p>
             {deleteError && (
-              <p style={{ fontSize: '13px', color: '#dc2626', marginBottom: '12px' }}>{deleteError}</p>
+              <p className="text-[13px] text-red-600 mb-3">{deleteError}</p>
             )}
-            <div style={{ display: 'flex', gap: '10px' }}>
+            <div className="flex gap-2.5">
               <button
                 onClick={() => deleteMutation.mutate(confirmDelete)}
                 disabled={deleteMutation.isPending}
-                style={{
-                  background: '#ef4444', color: '#fff', border: 'none',
-                  padding: '10px 20px', borderRadius: '8px', cursor: 'pointer',
-                  fontSize: '14px', fontWeight: '500', flex: 1
-                }}
+                className="bg-red-500 text-white border-none px-5 py-2.5 rounded-lg cursor-pointer text-sm font-medium flex-1"
               >
                 {deleteMutation.isPending ? 'Deleting...' : 'Yes, Delete'}
               </button>
               <button
                 onClick={() => setConfirmDelete(null)}
-                style={{
-                  background: '#f1f5f9', color: '#374151', border: 'none',
-                  padding: '10px 20px', borderRadius: '8px', cursor: 'pointer',
-                  fontSize: '14px', flex: 1
-                }}
+                className="bg-slate-100 text-gray-700 border-none px-5 py-2.5 rounded-lg cursor-pointer text-sm flex-1"
               >
                 Cancel
               </button>
@@ -131,24 +107,16 @@ export default function SchedulesPage() {
       )}
 
       {isLoading ? (
-        <p style={{ color: '#94a3b8' }}>Loading...</p>
+        <p className="text-slate-400">Loading...</p>
       ) : isError ? (
-        <div style={{
-          background: '#fef2f2', borderRadius: '12px', padding: '32px',
-          textAlign: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
-        }}>
-          <p style={{ color: '#dc2626', fontSize: '14px' }}>
-            Failed to load schedules. Check your backend connection.
-          </p>
+        <div className="bg-red-50 rounded-xl p-8 text-center shadow-sm">
+          <p className="text-red-600 text-sm">Failed to load schedules. Check your backend connection.</p>
         </div>
       ) : schedules.length === 0 ? (
-        <div style={{
-          background: '#fff', borderRadius: '12px', padding: '48px',
-          textAlign: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
-        }}>
-          <p style={{ color: '#94a3b8', fontSize: '15px' }}>
+        <div className="bg-white rounded-xl p-12 text-center shadow-sm">
+          <p className="text-slate-400 text-[15px]">
             No classes scheduled yet.{' '}
-            <Link href='/dashboard/schedules/new' style={{ color: '#3b82f6' }}>
+            <Link href="/dashboard/schedules/new" className="text-blue-500">
               Create your first class →
             </Link>
           </p>
@@ -157,85 +125,56 @@ export default function SchedulesPage() {
         (Object.entries(grouped) as [string, any[]][])
           .sort(([a], [b]) => b.localeCompare(a))
           .map(([date, daySchedules]: [string, any[]]) => (
-            <div key={date} style={{ marginBottom: '32px' }}>
+            <div key={date} className="mb-8">
               {/* Date header */}
-              <div style={{
-                fontSize: '13px', fontWeight: '600', color: '#64748b',
-                textTransform: 'uppercase', letterSpacing: '0.06em',
-                marginBottom: '12px', paddingBottom: '8px',
-                borderBottom: '1px solid #e2e8f0'
-              }}>
+              <div className="text-[13px] font-semibold text-slate-500 uppercase tracking-[0.06em] mb-3 pb-2 border-b border-slate-200">
                 {formatDateHeader(date + 'T12:00:00')}
               </div>
 
               {/* Grid */}
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-                gap: '16px'
-              }}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                 {daySchedules.map((s: any) => {
                   const cfg = STATUS_CONFIG[s.status] || STATUS_CONFIG.scheduled
                   const alertCount = s.alerts?.filter((a: any) => !a.is_resolved).length || 0
 
                   return (
-                    <div key={s.id} style={{
-                      background: cfg.bg,
-                      border: `1.5px solid ${cfg.border}`,
-                      borderRadius: '12px',
-                      padding: '18px',
-                      position: 'relative',
-                    }}>
-                      {/* Status badge */}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
-                        <span style={{
-                          fontSize: '11px', fontWeight: '700', padding: '3px 10px',
-                          borderRadius: '99px', background: cfg.badge + '20',
-                          color: cfg.badge, letterSpacing: '0.04em'
-                        }}>
+                    <div key={s.id} className={`${cfg.card} rounded-xl p-[18px] relative`}>
+                      {/* Status badge row */}
+                      <div className="flex justify-between items-start mb-2.5">
+                        <span className={`text-[11px] font-bold px-2.5 py-[3px] rounded-full tracking-[0.04em] ${cfg.badge}`}>
                           {s.status === 'live' ? '🟢 LIVE' : s.status.toUpperCase()}
                         </span>
                         {alertCount > 0 && (
-                          <span style={{
-                            fontSize: '11px', fontWeight: '700', padding: '3px 10px',
-                            borderRadius: '99px', background: '#fef2f2',
-                            color: '#dc2626'
-                          }}>
+                          <span className="text-[11px] font-bold px-2.5 py-[3px] rounded-full bg-red-50 text-red-600">
                             🔔 {alertCount} alert{alertCount > 1 ? 's' : ''}
                           </span>
                         )}
                       </div>
 
                       {/* Teacher */}
-                      <div style={{ fontSize: '15px', fontWeight: '600', color: cfg.text, marginBottom: '4px' }}>
+                      <div className={`text-[15px] font-semibold mb-1 ${cfg.text}`}>
                         {s.teachers?.full_name}
                       </div>
 
                       {/* Time */}
-                      <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '8px' }}>
+                      <div className="text-[13px] text-slate-500 mb-2">
                         {formatTime(s.scheduled_start)} →{' '}
                         {formatTime(s.scheduled_end)}
                         {' · '}{s.scheduled_duration_mins} mins
                       </div>
 
                       {/* Students count */}
-                      <div style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '12px' }}>
+                      <div className="text-xs text-slate-400 mb-3">
                         👥 {s.class_students?.length || 0} students enrolled
                       </div>
 
-                      {/* Duration diff if completed */}
+                      {/* Actual duration diff */}
                       {s.actual_duration_mins && (
-                        <div style={{ fontSize: '12px', marginBottom: '12px' }}>
-                          <span style={{ color: '#64748b' }}>Actual: </span>
-                          <span style={{ fontWeight: '600', color: cfg.text }}>
-                            {s.actual_duration_mins} mins
-                          </span>
+                        <div className="text-xs mb-3">
+                          <span className="text-slate-500">Actual: </span>
+                          <span className={`font-semibold ${cfg.text}`}>{s.actual_duration_mins} mins</span>
                           {s.duration_diff_mins !== null && (
-                            <span style={{
-                              marginLeft: '6px',
-                              color: s.duration_diff_mins < 0 ? '#ef4444' : '#22c55e',
-                              fontWeight: '600'
-                            }}>
+                            <span className={`ml-1.5 font-semibold ${s.duration_diff_mins < 0 ? 'text-red-500' : 'text-green-500'}`}>
                               ({s.duration_diff_mins > 0 ? '+' : ''}{s.duration_diff_mins})
                             </span>
                           )}
@@ -243,39 +182,23 @@ export default function SchedulesPage() {
                       )}
 
                       {/* Actions */}
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <Link
-                          href={`/dashboard/schedules/${s.id}`}
-                          style={{ flex: 1, textDecoration: 'none' }}
-                        >
-                          <button style={{
-                            width: '100%', padding: '7px', borderRadius: '7px',
-                            border: `1px solid ${cfg.border}`, background: '#fff',
-                            cursor: 'pointer', fontSize: '12px', fontWeight: '500',
-                            color: cfg.badge
-                          }}>
+                      <div className="flex gap-2">
+                        <Link href={`/dashboard/schedules/${s.id}`} className="flex-1 no-underline">
+                          <button className={`w-full py-[7px] rounded-[7px] bg-white cursor-pointer text-xs font-medium ${cfg.viewBtn}`}>
                             View Details
                           </button>
                         </Link>
 
                         {s.status === 'scheduled' && (
                           <>
-                            <Link href={`/dashboard/schedules/${s.id}/edit`} style={{ textDecoration: 'none' }}>
-                              <button style={{
-                                padding: '7px 12px', borderRadius: '7px',
-                                border: '1px solid #e2e8f0', background: '#fff',
-                                cursor: 'pointer', fontSize: '12px', color: '#374151'
-                              }}>
+                            <Link href={`/dashboard/schedules/${s.id}/edit`} className="no-underline">
+                              <button className="px-3 py-[7px] rounded-[7px] border border-slate-200 bg-white cursor-pointer text-xs text-gray-700">
                                 ✏️
                               </button>
                             </Link>
                             <button
                               onClick={() => setConfirmDelete(s.id)}
-                              style={{
-                                padding: '7px 12px', borderRadius: '7px',
-                                border: '1px solid #fca5a5', background: '#fff',
-                                cursor: 'pointer', fontSize: '12px', color: '#dc2626'
-                              }}
+                              className="px-3 py-[7px] rounded-[7px] border border-red-300 bg-white cursor-pointer text-xs text-red-600"
                             >
                               🗑️
                             </button>

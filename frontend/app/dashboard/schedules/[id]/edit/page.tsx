@@ -53,18 +53,18 @@ export default function EditSchedulePage() {
     onError: (e: any) => setError(e.response?.data?.detail || 'Failed to update')
   })
 
-  if (isLoading) return <p style={{ color: '#94a3b8' }}>Loading...</p>
-  if (!schedule) return <p style={{ color: '#ef4444' }}>Schedule not found</p>
+  if (isLoading) return <p className="text-slate-400">Loading...</p>
+  if (!schedule) return <p className="text-red-500">Schedule not found</p>
 
   if (schedule.status !== 'scheduled') {
     return (
-      <div style={{ background: '#fef2f2', borderRadius: '12px', padding: '24px' }}>
-        <p style={{ color: '#dc2626', fontSize: '15px' }}>
+      <div className="bg-red-50 rounded-xl p-6">
+        <p className="text-red-600 text-[15px]">
           Cannot edit a class with status: <strong>{schedule.status}</strong>
         </p>
         <button
           onClick={() => router.back()}
-          style={{ marginTop: '16px', padding: '8px 20px', borderRadius: '8px', border: '1px solid #e2e8f0', cursor: 'pointer', background: '#fff' }}
+          className="mt-4 px-5 py-2 rounded-lg border border-slate-200 cursor-pointer bg-white"
         >
           Go Back
         </button>
@@ -74,98 +74,68 @@ export default function EditSchedulePage() {
 
   return (
     <div>
-      <div style={{ marginBottom: '24px' }}>
-        <h2 style={{ fontSize: '24px', fontWeight: '700' }}>Edit Class</h2>
-        <p style={{ color: '#64748b', fontSize: '14px', marginTop: '4px' }}>
-          Teacher: {schedule.teachers?.full_name}
-        </p>
+      <div className="mb-6">
+        <h2 className="text-2xl font-bold">Edit Class</h2>
+        <p className="text-slate-500 text-sm mt-1">Teacher: {schedule.teachers?.full_name}</p>
       </div>
 
       {error && (
-        <div style={{
-          background: '#fef2f2', color: '#dc2626', padding: '12px 16px',
-          borderRadius: '8px', marginBottom: '20px', fontSize: '14px'
-        }}>
-          {error}
-        </div>
+        <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg mb-5 text-sm">{error}</div>
       )}
 
-      <div style={{ background: '#fff', borderRadius: '12px', padding: '28px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', maxWidth: '480px' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+      <div className="bg-white rounded-xl p-7 shadow-sm max-w-[480px]">
+        <div className="flex flex-col gap-[18px]">
           <div>
-            <label style={{ fontSize: '13px', fontWeight: '500', color: '#374151', display: 'block', marginBottom: '6px' }}>
-              Start Time
-            </label>
+            <label className="text-[13px] font-medium text-gray-700 block mb-1.5">Start Time</label>
             <input
-              type='datetime-local'
+              type="datetime-local"
               value={form.scheduled_start}
               onChange={e => setForm(f => ({ ...f, scheduled_start: e.target.value }))}
-              style={{
-                width: '100%', padding: '8px 12px', border: '1px solid #e2e8f0',
-                borderRadius: '8px', fontSize: '14px', outline: 'none'
-              }}
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none"
             />
           </div>
           <div>
-            <label style={{ fontSize: '13px', fontWeight: '500', color: '#374151', display: 'block', marginBottom: '6px' }}>
-              End Time
-            </label>
+            <label className="text-[13px] font-medium text-gray-700 block mb-1.5">End Time</label>
             <input
-              type='datetime-local'
+              type="datetime-local"
               value={form.scheduled_end}
               onChange={e => setForm(f => ({ ...f, scheduled_end: e.target.value }))}
-              style={{
-                width: '100%', padding: '8px 12px', border: '1px solid #e2e8f0',
-                borderRadius: '8px', fontSize: '14px', outline: 'none'
-              }}
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none"
             />
           </div>
           <div>
-            <label style={{ fontSize: '13px', fontWeight: '500', color: '#374151', display: 'block', marginBottom: '6px' }}>
-              Duration
-            </label>
-            <div style={{
-              padding: '8px 12px',
-              border: `1px solid ${calcDuration > 0 && calcDuration < 15 ? '#fca5a5' : '#e2e8f0'}`,
-              borderRadius: '8px', fontSize: '14px',
-              background: '#f8fafc',
-              color: calcDuration === 0 ? '#94a3b8' : calcDuration < 15 ? '#ef4444' : '#0f172a',
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between'
-            }}>
+            <label className="text-[13px] font-medium text-gray-700 block mb-1.5">Duration</label>
+            <div className={`px-3 py-2 rounded-lg text-sm bg-slate-50 flex items-center justify-between border ${
+              calcDuration > 0 && calcDuration < 15
+                ? 'border-red-300 text-red-500'
+                : calcDuration === 0
+                  ? 'border-slate-200 text-slate-400'
+                  : 'border-slate-200 text-slate-900'
+            }`}>
               <span>
                 {calcDuration === 0 ? 'Set start and end time' : `${calcDuration} minutes`}
               </span>
               {calcDuration > 0 && calcDuration < 15 && (
-                <span style={{ fontSize: '12px', color: '#ef4444', fontWeight: '500' }}>
-                  ⚠ Minimum 15 mins
-                </span>
+                <span className="text-xs text-red-500 font-medium">⚠ Minimum 15 mins</span>
               )}
             </div>
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
+        <div className="flex gap-3 mt-6">
           <button
             onClick={() => {
               if (calcDuration < 15) return setError('Class duration cannot be less than 15 minutes. Please set a later end time.')
               mutation.mutate(form)
             }}
             disabled={mutation.isPending}
-            style={{
-              background: '#3b82f6', color: '#fff', border: 'none',
-              padding: '10px 28px', borderRadius: '8px', cursor: 'pointer',
-              fontSize: '14px', fontWeight: '500'
-            }}
+            className="bg-blue-500 text-white border-none px-7 py-2.5 rounded-lg cursor-pointer text-sm font-medium"
           >
             {mutation.isPending ? 'Saving...' : 'Save Changes'}
           </button>
           <button
             onClick={() => router.back()}
-            style={{
-              background: '#f1f5f9', color: '#374151', border: 'none',
-              padding: '10px 24px', borderRadius: '8px', cursor: 'pointer',
-              fontSize: '14px'
-            }}
+            className="bg-slate-100 text-gray-700 border-none px-6 py-2.5 rounded-lg cursor-pointer text-sm"
           >
             Cancel
           </button>
