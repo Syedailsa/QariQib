@@ -1,49 +1,34 @@
 # services/zoom_api.py
 import httpx
-import base64
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
+from services.zoom_token_store import get_access_token
 from core.config import settings
 
 ZOOM_API_BASE = 'https://api.zoom.us/v2'
 
-_token_cache: dict = {'token': None, 'expires_at': datetime.min.replace(tzinfo=timezone.utc)}
-
-
-def get_access_token() -> str:
-    now = datetime.now(timezone.utc)
-    if _token_cache['token'] and now < _token_cache['expires_at']:
-        return _token_cache['token']
-
-    credentials = f'{settings.ZOOM_CLIENT_ID}:{settings.ZOOM_CLIENT_SECRET}'
-    encoded = base64.b64encode(credentials.encode()).decode()
-
-    response = httpx.post(
-        f'https://zoom.us/oauth/token?grant_type=account_credentials&account_id={settings.ZOOM_ACCOUNT_ID}',
-        headers={'Authorization': f'Basic {encoded}'},
-        timeout=15.0
-    )
-    response.raise_for_status()
-    token = response.json()['access_token']
-
-    # Zoom tokens are valid for 1 hour — cache for 55 min to avoid edge cases
-    _token_cache['token'] = token
-    _token_cache['expires_at'] = now + timedelta(minutes=55)
-    print('[ZOOM] Access token refreshed')
-    return token
-
 
 def get_headers() -> dict:
+    token = get_access_token()
+    if not token:
+        raise RuntimeError(
+            '[ZOOM] No valid OAuth token available. Re-authorise at: '
+            f'https://zoom.us/oauth/authorize?response_type=code'
+            f'&client_id={settings.ZOOM_CLIENT_ID}'
+            f'&redirect_uri={settings.ZOOM_REDIRECT_URI}'
+            f'&scope=meeting:write:meeting'
+        )
     return {
-        'Authorization': f'Bearer {get_access_token()}',
+        'Authorization': f'Bearer {token}',
         'Content-Type': 'application/json'
     }
 
 
-def create_meeting(teacher_zoom_user_id: str, topic: str,
-                   start_time: datetime, duration_mins: int) -> dict:
+def create_meeting(topic: str, start_time: datetime, duration_mins: int,
+                   alternative_host_email: str = '') -> dict:
     """
-    Creates a Zoom meeting with registration enabled.
-    Returns full meeting object including meeting ID and join URL.
+    Creates a Zoom meeting under the academy's authorized account (me).
+    alternative_host_email: teacher's Zoom account email — makes the meeting
+    appear in their Zoom schedule and lets them start/host it themselves.
     """
     payload = {
         'topic': topic,
@@ -52,20 +37,25 @@ def create_meeting(teacher_zoom_user_id: str, topic: str,
         'duration': duration_mins,
         'timezone': 'UTC',
         'settings': {
-            'registration_type': 1,       # registration required
-            'approval_type': 0,           # auto approve
+            'registration_type': 1,
+            'approval_type': 0,
             'registrants_email_notification': True,
-            'waiting_room': False,        # disable waiting room for registered users
-            'join_before_host': False,
+            'waiting_room': False,
+            'join_before_host': True,   # alt host can start without admin
+            'alternative_hosts': alternative_host_email,
+            'alternative_hosts_email_notification': True,
         }
     }
 
     response = httpx.post(
-        f'{ZOOM_API_BASE}/users/{teacher_zoom_user_id}/meetings',
+        f'{ZOOM_API_BASE}/users/me/meetings',
         headers=get_headers(),
         json=payload,
         timeout=30.0
     )
+    if not response.is_success:
+        print(f'[ZOOM] create_meeting failed — status={response.status_code}')
+        print(f'[ZOOM] error body: {response.text}')
     response.raise_for_status()
     return response.json()
 

@@ -14,3 +14,8 @@ gevent==24.2.*               # high-concurrency worker pool for I/O-bound tasks
 python-jose[cryptography]==3.3.*  # JWT validation
 requests==2.31.*
 sentry-sdk==2.3.*
+
+ultralytics          # YOLOv8n — phone detection (COCO class 67)
+opencv-python-headless  # frame decode — headless, no GUI deps
+mediapipe            # face detection — optimised for video call faces
+websockets           # async WebSocket client for RTMS stream

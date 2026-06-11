@@ -131,7 +131,7 @@ def create_schedule(body: ScheduleCreate):
         print(f'[ERROR] Zoom setup failed for {schedule_id}: {e}')
         supabase.table('class_students').delete().eq('schedule_id', schedule_id).execute()
         supabase.table('class_schedules').delete().eq('id', schedule_id).execute()
-        raise HTTPException(status_code=502, detail=f'Failed to create Zoom meeting: {str(e)}')
+        raise HTTPException(status_code=503, detail=f'Failed to create Zoom meeting: {str(e)}')
 
     # Queue Celery tasks in a daemon thread so the HTTP response is never delayed
     # by broker connection latency or a slow/down Redis instance.

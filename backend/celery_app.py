@@ -6,7 +6,9 @@ celery_app = Celery(
     'qaraqib',
     broker=settings.REDIS_URL,
     backend=settings.REDIS_URL,
-    include=['tasks.absence']   # tells Celery where to find our tasks
+    include=[
+        'tasks.absence',
+    ]
 )
 
 celery_app.conf.update(

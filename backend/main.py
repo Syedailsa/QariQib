@@ -10,6 +10,7 @@ from routers.teachers_route import router as teachers_router
 from routers.students_route import router as students_router
 from routers.schedules_route import router as schedules_router
 from routers.alerts_route import router as alerts_router
+from routers.oauth_route import router as oauth_router
 
 
 @asynccontextmanager
@@ -34,12 +35,17 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=['http://localhost:3000'],
+    allow_origins=[
+        'http://localhost:3000',
+        'https://zoom.us',           
+        'https://marketplace.zoom.us'
+    ],
     allow_credentials=True,
     allow_methods=['*'],
     allow_headers=['*'],
 )
 
+app.include_router(oauth_router) 
 app.include_router(zoom_router)
 app.include_router(teachers_router)
 app.include_router(students_router)

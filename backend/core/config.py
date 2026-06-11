@@ -9,10 +9,10 @@ class Settings(BaseSettings):
     DATABASE_URL: str
     REDIS_URL: str
 
-    ZOOM_ACCOUNT_ID: str = ''
     ZOOM_CLIENT_ID: str = ''
     ZOOM_CLIENT_SECRET: str = ''
     ZOOM_WEBHOOK_SECRET_TOKEN: str = ''
+    ZOOM_REDIRECT_URI: str = ''
 
     SUPABASE_URL: str = ''
     SUPABASE_SERVICE_KEY: str = ''

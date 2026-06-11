@@ -39,30 +39,43 @@ def setup_class(schedule_id: str):
     )
 
     meeting = create_meeting(
-        teacher_zoom_user_id=teacher['zoom_user_id'],
         topic=f"QaraQib Class — {teacher['full_name']}",
         start_time=scheduled_start,
-        duration_mins=schedule['scheduled_duration_mins']
+        duration_mins=schedule['scheduled_duration_mins'],
+        alternative_host_email=teacher['email'],
     )
 
     meeting_id = str(meeting['id'])
     print(f'[ZOOM] Meeting created: {meeting_id}')
 
-    # Update schedule with real zoom_meeting_id
+    # Update schedule with zoom_meeting_id
     supabase.table('class_schedules').update({
         'zoom_meeting_id': meeting_id
     }).eq('id', schedule_id).execute()
 
-    # 2. Register teacher
+    # 2. Register teacher as a participant to get their personal join URL
     name_parts = teacher['full_name'].split(' ', 1)
     first = name_parts[0]
-    last = name_parts[1] if len(name_parts) > 1 else ''
+    last  = name_parts[1] if len(name_parts) > 1 else ''
+
+    try:
+        teacher_reg = register_participant(
+            meeting_id=meeting_id,
+            first_name=first,
+            last_name=last,
+            email=teacher['email']
+        )
+        teacher_join_url = teacher_reg['join_url']
+        print(f'[ZOOM] Teacher registered: {teacher["email"]} → {teacher_reg["registrant_id"]}')
+    except Exception as e:
+        # Alternative host already has access — fall back to generic join URL
+        teacher_join_url = meeting.get('join_url', '')
+        print(f'[ZOOM] Teacher registration failed (alt-host fallback): {e}')
 
     supabase.table('teachers').update({
-        'zoom_join_url': meeting['join_url']
+        'zoom_join_url': teacher_join_url
     }).eq('id', teacher['id']).execute()
-
-    print(f'[ZOOM] Teacher is host — join URL stored: {teacher["email"]}')
+    print(f'[ZOOM] Teacher join URL stored: {teacher["email"]}')
 
     # 3. Register each student
     for enrollment in enrollments.data:
