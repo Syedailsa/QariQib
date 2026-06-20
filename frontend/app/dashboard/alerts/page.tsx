@@ -19,7 +19,7 @@ export default function AlertsPage() {
   const { data: alerts = [], isLoading, isError } = useQuery({
     queryKey: ['alerts', showResolved],
     queryFn: () => getAlerts(showResolved),
-    refetchInterval: 15000
+    refetchInterval: 5000
   })
 
   const resolveMutation = useMutation({
@@ -101,7 +101,7 @@ export default function AlertsPage() {
                     <button
                       onClick={() => resolveMutation.mutate(a.id)}
                       disabled={resolveMutation.isPending}
-                      className="text-[13px] font-medium px-[18px] py-2 rounded-lg border border-slate-200 bg-white cursor-pointer text-gray-700 shrink-0 ml-5"
+                      className="text-[13px] font-medium px-[18px] py-2 rounded-lg border border-green-500 bg-green-500 cursor-pointer text-white shrink-0 ml-5"
                     >
                       Resolve
                     </button>

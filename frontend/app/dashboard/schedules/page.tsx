@@ -173,9 +173,11 @@ export default function SchedulesPage() {
                         <div className="text-xs mb-3">
                           <span className="text-slate-500">Actual: </span>
                           <span className={`font-semibold ${cfg.text}`}>{s.actual_duration_mins} mins</span>
-                          {s.duration_diff_mins !== null && (
+                          {s.duration_diff_mins !== null && s.duration_diff_mins !== 0 && (
                             <span className={`ml-1.5 font-semibold ${s.duration_diff_mins < 0 ? 'text-red-500' : 'text-green-500'}`}>
-                              ({s.duration_diff_mins > 0 ? '+' : ''}{s.duration_diff_mins})
+                              · {s.duration_diff_mins < 0
+                                ? `ended ${Math.abs(s.duration_diff_mins)} mins early`
+                                : `ran ${s.duration_diff_mins} mins over`}
                             </span>
                           )}
                         </div>

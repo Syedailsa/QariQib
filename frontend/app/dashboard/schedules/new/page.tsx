@@ -51,6 +51,18 @@ export default function NewSchedulePage() {
       return setError('End time must be after start time')
     if (calcDuration < 15)
       return setError('Class duration cannot be less than 15 minutes. Please set a later end time.')
+
+    const noContact = form.student_ids
+      .map(id => students.find((s: any) => s.id === id))
+      .filter((s: any) => s && !s.email && !s.parent_email)
+    if (noContact.length > 0) {
+      return setError(
+        `Cannot schedule: ${noContact.map((s: any) => s.full_name).join(', ')} ` +
+        `${noContact.length === 1 ? 'has' : 'have'} no email or parent email. ` +
+        `Please add an email address before scheduling.`
+      )
+    }
+
     setError('')
     mutation.mutate({
       ...form,
@@ -173,7 +185,13 @@ export default function NewSchedulePage() {
                 />
                 <div>
                   <div className="text-sm font-medium">{s.full_name}</div>
-                  <div className="text-xs text-slate-500">{s.email || 'No email'}</div>
+                  {s.email ? (
+                    <div className="text-xs text-slate-500">{s.email}</div>
+                  ) : s.parent_email ? (
+                    <div className="text-xs text-slate-400">via parent: {s.parent_email}</div>
+                  ) : (
+                    <div className="text-xs text-red-400 font-medium">⚠ No email — add email first</div>
+                  )}
                 </div>
               </label>
             ))}

@@ -42,7 +42,7 @@ def setup_class(schedule_id: str):
         topic=f"QaraQib Class — {teacher['full_name']}",
         start_time=scheduled_start,
         duration_mins=schedule['scheduled_duration_mins'],
-        alternative_host_email=teacher['email'],
+        alternative_host_email=teacher['email'] if teacher.get('zoom_user_id') else '',
     )
 
     meeting_id = str(meeting['id'])
@@ -80,16 +80,30 @@ def setup_class(schedule_id: str):
     # 3. Register each student
     for enrollment in enrollments.data:
         student = enrollment['students']
-        name_parts = student['full_name'].split(' ', 1)
-        first = name_parts[0]
-        last = name_parts[1] if len(name_parts) > 1 else ''
 
-        student_reg = register_participant(
-            meeting_id=meeting_id,
-            first_name=first,
-            last_name=last,
-            email=student['email']
-        )
+        email = student.get('email') or student.get('parent_email')
+        if not email:
+            print(f'[ZOOM] Skipping student {student["id"]} ({student["full_name"]}) — no email or parent email')
+            continue
+
+        name_parts = (student['full_name'] or '').strip().split(' ', 1)
+        first = name_parts[0].strip()
+        last  = name_parts[1].strip() if len(name_parts) > 1 else ''
+
+        if not first:
+            print(f'[ZOOM] Skipping student {email} — full_name is empty, please fill in the student name')
+            continue
+
+        try:
+            student_reg = register_participant(
+                meeting_id=meeting_id,
+                first_name=first,
+                last_name=last,
+                email=email
+            )
+        except Exception as e:
+            print(f'[ZOOM] Student registration failed for {student["email"]}: {e}')
+            continue
 
         # Store registrant_id and join_url on class_students
         supabase.table('class_students').update({

@@ -9,6 +9,60 @@ from datetime import datetime
 router = APIRouter(prefix='/api/v1/schedules', tags=['schedules'])
 
 
+def _fmt_time(iso: str) -> str:
+    dt = datetime.fromisoformat(iso.replace('Z', '+00:00'))
+    return dt.strftime('%I:%M %p').lstrip('0')
+
+
+def _check_teacher_overlap(teacher_id: str, start: str, end: str, exclude_id: str = None):
+    q = supabase.table('class_schedules') \
+        .select('id, scheduled_start, scheduled_end') \
+        .eq('teacher_id', teacher_id) \
+        .in_('status', ['scheduled', 'live']) \
+        .lt('scheduled_start', end) \
+        .gt('scheduled_end', start)
+    if exclude_id:
+        q = q.neq('id', exclude_id)
+    result = q.execute()
+    if result.data:
+        c = result.data[0]
+        raise HTTPException(
+            status_code=409,
+            detail=f"Teacher already has a class from {_fmt_time(c['scheduled_start'])} to "
+                   f"{_fmt_time(c['scheduled_end'])} that overlaps with this slot"
+        )
+
+
+def _check_student_overlaps(student_ids: List[str], start: str, end: str, exclude_id: str = None):
+    q = supabase.table('class_schedules') \
+        .select('id') \
+        .in_('status', ['scheduled', 'live']) \
+        .lt('scheduled_start', end) \
+        .gt('scheduled_end', start)
+    if exclude_id:
+        q = q.neq('id', exclude_id)
+    overlapping = q.execute()
+
+    if not overlapping.data:
+        return
+
+    overlapping_ids = [s['id'] for s in overlapping.data]
+
+    conflicts = supabase.table('class_students') \
+        .select('student_id, students(full_name)') \
+        .in_('schedule_id', overlapping_ids) \
+        .in_('student_id', student_ids) \
+        .execute()
+
+    if conflicts.data:
+        names = list({c['students']['full_name'] for c in conflicts.data if c.get('students')})
+        noun = 'is' if len(names) == 1 else 'are'
+        raise HTTPException(
+            status_code=409,
+            detail=f"{', '.join(names)} {noun} already enrolled in a class that overlaps with this slot"
+        )
+
+
 class ScheduleCreate(BaseModel):
     teacher_id: str
     student_ids: List[str]
@@ -108,6 +162,9 @@ def create_schedule(body: ScheduleCreate):
             detail='Teacher has not given consent for monitoring'
         )
 
+    _check_teacher_overlap(body.teacher_id, body.scheduled_start, body.scheduled_end)
+    _check_student_overlaps(body.student_ids, body.scheduled_start, body.scheduled_end)
+
     schedule = supabase.table('class_schedules').insert({
         'teacher_id':               body.teacher_id,
         'scheduled_start':          body.scheduled_start,
@@ -131,7 +188,10 @@ def create_schedule(body: ScheduleCreate):
         print(f'[ERROR] Zoom setup failed for {schedule_id}: {e}')
         supabase.table('class_students').delete().eq('schedule_id', schedule_id).execute()
         supabase.table('class_schedules').delete().eq('id', schedule_id).execute()
-        raise HTTPException(status_code=503, detail=f'Failed to create Zoom meeting: {str(e)}')
+        raise HTTPException(
+            status_code=503,
+            detail='Failed to set up Zoom meeting. Check server logs for details.'
+        )
 
     # Queue Celery tasks in a daemon thread so the HTTP response is never delayed
     # by broker connection latency or a slow/down Redis instance.
@@ -154,7 +214,7 @@ def create_schedule(body: ScheduleCreate):
 @router.patch('/{schedule_id}')
 def update_schedule(schedule_id: str, body: ScheduleUpdate):
     existing = supabase.table('class_schedules') \
-        .select('status, zoom_meeting_id') \
+        .select('status, zoom_meeting_id, teacher_id, scheduled_start, scheduled_end') \
         .eq('id', schedule_id) \
         .execute()
 
@@ -181,6 +241,20 @@ def update_schedule(schedule_id: str, body: ScheduleUpdate):
                 status_code=400,
                 detail='End time must be after start time'
             )
+
+    if body.scheduled_start or body.scheduled_end:
+        effective_start = body.scheduled_start or existing.data[0]['scheduled_start']
+        effective_end   = body.scheduled_end   or existing.data[0]['scheduled_end']
+        teacher_id      = existing.data[0]['teacher_id']
+
+        enrolled = supabase.table('class_students') \
+            .select('student_id') \
+            .eq('schedule_id', schedule_id) \
+            .execute()
+        student_ids = [s['student_id'] for s in enrolled.data]
+
+        _check_teacher_overlap(teacher_id, effective_start, effective_end, exclude_id=schedule_id)
+        _check_student_overlaps(student_ids, effective_start, effective_end, exclude_id=schedule_id)
 
     result = supabase.table('class_schedules') \
         .update(updates) \

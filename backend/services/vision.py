@@ -12,24 +12,27 @@ from dataclasses import dataclass
 
 # ─── Thresholds ───────────────────────────────────────────────────────────────
 BLACK_FRAME_THRESHOLD = 30    # mean brightness below this = camera off / avatar
-PHONE_CONF_THRESHOLD  = 0.15
+PHONE_CONF_THRESHOLD  = 0.40
 FACE_CONF_THRESHOLD   = 0.50
-PHONE_COCO_CLASS      = 67    # COCO class 67 = cell phone
+PHONE_CLASS           = 0     # fine-tuned model class 0 = phone
 CONTAINMENT_THRESHOLD = 0.72  # dedup: smaller box mostly inside larger = same object
 
-FACE_MODEL_PATH = 'face_detector.tflite'
+FACE_MODEL_PATH = os.path.join(os.path.dirname(__file__), '..', 'models', 'face_detector.tflite')
 
 # ─── Lazy model singletons ────────────────────────────────────────────────────
 _yolo_model     = None
 _face_detector  = None
 
 
+PHONE_MODEL_PATH = os.path.join(os.path.dirname(__file__), '..', 'models', 'phone_ft.pt')
+
+
 def _load_phone_model():
     global _yolo_model
     if _yolo_model is None:
         from ultralytics import YOLO
-        _yolo_model = YOLO('yolov8n.pt')
-        print('[VISION] YOLOv8n loaded', flush=True)
+        _yolo_model = YOLO(PHONE_MODEL_PATH)
+        print('[VISION] Phone model loaded', flush=True)
     return _yolo_model
 
 
@@ -37,7 +40,6 @@ def _load_face_detector():
     global _face_detector
     if _face_detector is None:
         import urllib.request
-        import mediapipe as mp
         from mediapipe.tasks import python as mp_tasks
         from mediapipe.tasks.python import vision as mp_vision
 
@@ -129,8 +131,12 @@ def analyze_frame(frame: np.ndarray) -> VisionResult:
     yolo_r = model(frame, verbose=False)[0]
     raw    = []
     for box in yolo_r.boxes:
-        if int(box.cls[0]) == PHONE_COCO_CLASS and float(box.conf[0]) >= PHONE_CONF_THRESHOLD:
+        if int(box.cls[0]) == PHONE_CLASS and float(box.conf[0]) >= PHONE_CONF_THRESHOLD:
             x1, y1, x2, y2 = map(int, box.xyxy[0])
+            w, h = x2 - x1, y2 - y1
+            # Reject flat wide boxes — Zoom name labels, banners, UI overlays
+            if h > 0 and (w / h) > 3.0:
+                continue
             raw.append({'conf': float(box.conf[0]), 'bbox': (x1, y1, x2, y2)})
 
     phones          = _deduplicate(raw)

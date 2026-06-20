@@ -60,6 +60,23 @@ def create_meeting(topic: str, start_time: datetime, duration_mins: int,
     return response.json()
 
 
+def get_zoom_user_id(email: str) -> str | None:
+    """Look up a Zoom user ID by email. Returns None if not found or on error."""
+    try:
+        response = httpx.get(
+            f'{ZOOM_API_BASE}/users/{email}',
+            headers=get_headers(),
+            timeout=10.0
+        )
+        if response.status_code == 200:
+            return response.json().get('id')
+        print(f'[ZOOM] User not found for email {email} — status={response.status_code}')
+        return None
+    except Exception as e:
+        print(f'[ZOOM] Failed to fetch user ID for {email}: {e}')
+        return None
+
+
 def register_participant(meeting_id: str, first_name: str,
                             last_name: str, email: str) -> dict:
     payload = {

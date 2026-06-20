@@ -7,8 +7,8 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient({
     defaultOptions: {
       queries: {
-        staleTime: 30 * 1000,   // 30 seconds
-        refetchInterval: 30 * 1000, // auto refresh every 30s
+        staleTime: 0,
+        refetchInterval: 5000,
       }
     }
   }))

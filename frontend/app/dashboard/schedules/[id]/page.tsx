@@ -34,7 +34,7 @@ export default function ScheduleDetailPage() {
     // Only poll when the class is active — stop once completed or missed
     refetchInterval: (query) => {
       const status = query.state.data?.status
-      return status === 'live' || status === 'scheduled' ? 15000 : false
+      return status === 'live' || status === 'scheduled' ? 5000 : false
     }
   })
 
@@ -73,9 +73,13 @@ export default function ScheduleDetailPage() {
           <p className="text-sm mt-1">
             <span className="text-slate-500">Actual duration: </span>
             <span className="font-semibold">{schedule.actual_duration_mins} mins</span>
-            <span className={`ml-2 text-[13px] ${schedule.duration_diff_mins < 0 ? 'text-red-500' : 'text-green-500'}`}>
-              ({schedule.duration_diff_mins > 0 ? '+' : ''}{schedule.duration_diff_mins} mins)
-            </span>
+            {schedule.duration_diff_mins !== null && schedule.duration_diff_mins !== 0 && (
+              <span className={`ml-2 text-[13px] font-semibold ${schedule.duration_diff_mins < 0 ? 'text-red-500' : 'text-green-500'}`}>
+                · {schedule.duration_diff_mins < 0
+                  ? `ended ${Math.abs(schedule.duration_diff_mins)} mins early`
+                  : `ran ${schedule.duration_diff_mins} mins over`}
+              </span>
+            )}
           </p>
         )}
       </div>
@@ -194,7 +198,7 @@ export default function ScheduleDetailPage() {
                     <button
                       onClick={() => resolveMutation.mutate(a.id)}
                       disabled={resolveMutation.isPending}
-                      className="text-xs font-medium px-3.5 py-1.5 rounded-lg border border-slate-200 bg-white cursor-pointer text-gray-700 shrink-0 ml-4"
+                      className="text-xs font-medium px-3.5 py-1.5 rounded-lg border border-green-500 bg-green-500 cursor-pointer text-white shrink-0 ml-4"
                     >
                       Resolve
                     </button>

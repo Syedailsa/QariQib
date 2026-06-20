@@ -41,11 +41,11 @@ celery_app.conf.update(
         'retry_on_timeout': False,
     },
 
-    # Celery Beat — periodic tasks (replaces APScheduler's IntervalTrigger)
+    # Celery Beat — periodic tasks (replaces IntervalTrigger)
     beat_schedule={
         'check-missed-classes': {
             'task': 'tasks.absence.check_missed_classes',
-            'schedule': 900.0,   # every 15 minutes (in seconds)
+            'schedule': 60.0,   # every 1 minute (in seconds)
         }
     }
 )

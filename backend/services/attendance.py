@@ -1,9 +1,11 @@
 # services/attendance.py
 from datetime import datetime, timezone
+import json
+import re
 from db.supabase import supabase
+from core.redis_client import redis_client
 from services.alerts import create_alert, resolve_alert, THRESHOLDS
 from services.schedule import get_schedule
-import re
 
 
 def parse_dt(dt_str: str) -> datetime:
@@ -91,6 +93,33 @@ def on_participant_joined(payload: dict):
         name = teacher['full_name']
         participant_type = 'teacher'
         absent_alert_type = 'teacher_absent'
+
+    # Cache zoom_user_id → DB participant so vision alerts can attach teacher_id/student_id.
+    # Zoom webhooks use 'id' or 'user_id' depending on the event version — try both.
+    # 'user_id' is the numeric Zoom account ID that RTMS sends in video frames.
+    # 'id' is a per-meeting UUID — different value, wrong for RTMS matching.
+    zoom_user_id = str(participant.get('user_id') or participant.get('id') or '')
+    print(f'[ATTENDANCE] zoom_user_id={zoom_user_id!r} for {participant_type} {name}', flush=True)
+    if zoom_user_id:
+        try:
+            redis_client.setex(
+                f'rtms:{zoom_meeting_id}:{zoom_user_id}:participant',
+                7200,
+                json.dumps({'db_id': participant_id, 'type': participant_type, 'name': name})
+            )
+            # Extra key so vision_state can identify teachers without trusting the
+            # RTMS participant_type field (Zoom does not send it — it defaults to 'student')
+            if participant_type == 'teacher':
+                redis_client.setex(
+                    f'rtms:{zoom_meeting_id}:teacher_zoom_id',
+                    7200,
+                    zoom_user_id,
+                )
+            print(f'[ATTENDANCE] Redis participant cached: {zoom_user_id} → {participant_type} {name}', flush=True)
+        except Exception as e:
+            print(f'[ATTENDANCE] Redis cache write failed for {participant_type} {name}: {e}', flush=True)
+    else:
+        print(f'[ATTENDANCE] No zoom_user_id in webhook payload — vision alerts will lack name badge', flush=True)
 
     # Idempotency check — must run BEFORE any writes so Zoom retries are fully blocked
     existing_record = supabase.table('attendance_records') \

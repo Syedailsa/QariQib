@@ -22,6 +22,9 @@ export const updateConsent = (teacher_id: string, consent_given: boolean) =>
     params: { consent_given }
   }).then(r => r.data)
 
+export const deleteTeacher = (teacher_id: string) =>
+  api.delete(`/api/v1/teachers/${teacher_id}`).then(r => r.data)
+
 // ─── Students ────────────────────────────────────────────────
 export const getStudents = () =>
   api.get('/api/v1/students').then(r => r.data)
@@ -33,6 +36,9 @@ export const createStudent = (data: {
   parent_email?: string
   parent_phone?: string
 }) => api.post('/api/v1/students', data).then(r => r.data)
+
+export const deleteStudent = (student_id: string) =>
+  api.delete(`/api/v1/students/${student_id}`).then(r => r.data)
 
 // ─── Schedules ───────────────────────────────────────────────
 export const getSchedules = () =>
