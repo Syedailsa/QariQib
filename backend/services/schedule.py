@@ -32,6 +32,22 @@ def on_meeting_started(payload: dict):
 
     print(f'[MEETING STARTED] Schedule {schedule["id"]} is now live', flush=True)
 
+    # Trigger RTMS stream — without this call Zoom never fires meeting.rtms_started
+    try:
+        import httpx
+        from services.zoom_api import get_headers
+        resp = httpx.post(
+            f'https://api.zoom.us/v2/meetings/{zoom_meeting_id}/rtms/start',
+            headers=get_headers(),
+            timeout=10.0,
+        )
+        if resp.is_success:
+            print(f'[RTMS] Stream start requested for meeting {zoom_meeting_id}', flush=True)
+        else:
+            print(f'[RTMS] Stream start failed: {resp.status_code} {resp.text}', flush=True)
+    except Exception as e:
+        print(f'[RTMS] Failed to start stream: {e}', flush=True)
+
 
 def on_meeting_ended(payload: dict):
     obj = payload['object']

@@ -10,7 +10,6 @@ from routers.teachers_route import router as teachers_router
 from routers.students_route import router as students_router
 from routers.schedules_route import router as schedules_router
 from routers.alerts_route import router as alerts_router
-from routers.oauth_route import router as oauth_router
 
 
 @asynccontextmanager
@@ -45,7 +44,6 @@ app.add_middleware(
     allow_headers=['*'],
 )
 
-app.include_router(oauth_router) 
 app.include_router(zoom_router)
 app.include_router(teachers_router)
 app.include_router(students_router)

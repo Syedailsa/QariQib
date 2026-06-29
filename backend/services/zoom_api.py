@@ -10,13 +10,7 @@ ZOOM_API_BASE = 'https://api.zoom.us/v2'
 def get_headers() -> dict:
     token = get_access_token()
     if not token:
-        raise RuntimeError(
-            '[ZOOM] No valid OAuth token available. Re-authorise at: '
-            f'https://zoom.us/oauth/authorize?response_type=code'
-            f'&client_id={settings.ZOOM_CLIENT_ID}'
-            f'&redirect_uri={settings.ZOOM_REDIRECT_URI}'
-            f'&scope=meeting:write:meeting'
-        )
+        raise RuntimeError('[ZOOM] Failed to obtain OAuth token. Check ZOOM_ACCOUNT_ID, ZOOM_CLIENT_ID, ZOOM_CLIENT_SECRET.')
     return {
         'Authorization': f'Bearer {token}',
         'Content-Type': 'application/json'

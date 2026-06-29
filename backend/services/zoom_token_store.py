@@ -3,35 +3,21 @@ import time
 import httpx
 import base64
 from core.config import settings
-from core.redis_client import redis_client 
-
+from core.redis_client import redis_client
 
 TOKEN_KEY = "zoom:oauth:tokens"
 
 
-def save_tokens(access_token: str, refresh_token: str, expires_in: int):
-    payload = {
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-        "expires_at": time.time() + expires_in - 60,  # 60s buffer before real expiry
-    }
-    redis_client.set(TOKEN_KEY, json.dumps(payload))
-    print("[TOKEN STORE] Tokens saved to Redis.", flush=True)
-
-
 def get_access_token() -> str | None:
     raw = redis_client.get(TOKEN_KEY)
-    if not raw:
-        return None
-    data = json.loads(raw)
-    # Token still valid
-    if time.time() < data["expires_at"]:
-        return data["access_token"]
-    # Token expired — refresh it
-    return _refresh_access_token(data["refresh_token"])
+    if raw:
+        data = json.loads(raw)
+        if time.time() < data["expires_at"]:
+            return data["access_token"]
+    return _fetch_new_token()
 
 
-def _refresh_access_token(refresh_token: str) -> str | None:
+def _fetch_new_token() -> str | None:
     credentials = f"{settings.ZOOM_CLIENT_ID}:{settings.ZOOM_CLIENT_SECRET}"
     encoded = base64.b64encode(credentials.encode()).decode()
 
@@ -42,20 +28,22 @@ def _refresh_access_token(refresh_token: str) -> str | None:
             "Content-Type": "application/x-www-form-urlencoded",
         },
         data={
-            "grant_type": "refresh_token",
-            "refresh_token": refresh_token,
+            "grant_type": "account_credentials",
+            "account_id": settings.ZOOM_ACCOUNT_ID,
         },
     )
 
     if response.status_code != 200:
-        print(f"[TOKEN STORE] Refresh failed: {response.text}", flush=True)
+        print(f"[TOKEN STORE] Failed to fetch token: {response.text}", flush=True)
         return None
 
     token_data = response.json()
-    save_tokens(
-        token_data["access_token"],
-        token_data["refresh_token"],
-        token_data["expires_in"],
-    )
-    print("[TOKEN STORE] Token refreshed successfully.", flush=True)
-    return token_data["access_token"]
+    access_token = token_data["access_token"]
+    expires_in = token_data["expires_in"]
+
+    redis_client.set(TOKEN_KEY, json.dumps({
+        "access_token": access_token,
+        "expires_at": time.time() + expires_in - 60,
+    }))
+    print("[TOKEN STORE] New token fetched and cached.", flush=True)
+    return access_token
